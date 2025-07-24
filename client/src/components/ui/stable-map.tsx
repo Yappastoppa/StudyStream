@@ -41,62 +41,109 @@ export function StableMap(props: StableMapProps) {
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
   const hasMapboxToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.') && mapboxToken.length > 50);
 
-  // Debug logging
+  // Debug logging - gathering all required diagnostic info
   useEffect(() => {
-    console.log('🔍 STEP 1: Environment Check');
-    console.log('Raw env object:', import.meta.env);
-    console.log('Token from env:', import.meta.env.VITE_MAPBOX_TOKEN);
-    console.log('Token variable:', mapboxToken);
-    console.log('Token exists:', !!mapboxToken);
-    console.log('Token length:', mapboxToken?.length);
-    console.log('Token starts with pk.:', mapboxToken?.startsWith('pk.'));
-    console.log('hasMapboxToken result:', hasMapboxToken);
+    console.log('🔍 === MAPBOX DIAGNOSTIC REPORT ===');
     
-    console.log('🗺️ Mapbox Debug Info:', {
-      hasToken: !!mapboxToken,
-      tokenLength: mapboxToken?.length,
-      tokenPrefix: mapboxToken?.substring(0, 10) + '...',
-      isValidFormat: hasMapboxToken,
-      envKeys: Object.keys(import.meta.env).filter(k => k.includes('MAPBOX')),
-      allEnvKeys: Object.keys(import.meta.env),
-      rawToken: mapboxToken,
-      userAgent: navigator.userAgent,
-      windowLocation: window.location.href
+    // 1. MAP INIT CODE CHECK
+    console.log('1️⃣ MAP INIT CODE:');
+    console.log('✅ mapboxgl.accessToken will be set to:', mapboxToken);
+    console.log('✅ Map config will be:', {
+      container: 'mapContainer.current',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: center,
+      zoom: zoom,
+      attributionControl: false
     });
     
-    // Test network connectivity
-    console.log('🌐 Testing network connectivity...');
+    // 2. ENVIRONMENT LOADING CHECK
+    console.log('2️⃣ ENVIRONMENT LOADING:');
+    console.log('✅ Raw import.meta.env:', import.meta.env);
+    console.log('✅ VITE_MAPBOX_TOKEN value:', import.meta.env.VITE_MAPBOX_TOKEN);
+    console.log('✅ Token exists:', !!mapboxToken);
+    console.log('✅ Token length:', mapboxToken?.length);
+    console.log('✅ Token format valid (starts with pk.):', mapboxToken?.startsWith('pk.'));
+    console.log('✅ Token preview:', mapboxToken ? mapboxToken.substring(0, 15) + '...' : 'NULL');
+    
+    // 3. CONTAINER CHECK 
+    console.log('3️⃣ CONTAINER MARKUP & SIZING:');
+    setTimeout(() => {
+      if (mapContainer.current) {
+        const rect = mapContainer.current.getBoundingClientRect();
+        const computed = window.getComputedStyle(mapContainer.current);
+        console.log('✅ Container element:', mapContainer.current);
+        console.log('✅ Container dimensions:', {
+          width: rect.width,
+          height: rect.height,
+          computedWidth: computed.width,
+          computedHeight: computed.height,
+          position: computed.position,
+          display: computed.display
+        });
+      } else {
+        console.error('❌ Container element not found!');
+      }
+    }, 100);
+    
+    // 4. NETWORK & API TESTING
+    console.log('4️⃣ NETWORK & API TESTING:');
+    
+    // Test basic connectivity
     fetch('https://httpbin.org/get')
       .then(response => {
-        console.log('✅ Network test passed:', response.status);
+        console.log('✅ Basic internet connectivity: OK');
         return response.json();
       })
-      .then(data => {
-        console.log('📡 Network response:', data);
-      })
       .catch(error => {
-        console.error('❌ Network test failed:', error);
+        console.error('❌ Basic connectivity failed:', error);
       });
     
     // Test Mapbox API specifically if we have a token
     if (hasMapboxToken) {
       console.log('🗝️ Testing Mapbox API access...');
+      
+      // Test style access
       fetch(`https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${mapboxToken}`)
         .then(response => {
-          console.log('🗺️ Mapbox API test:', {
+          console.log('✅ Mapbox Style API Response:', {
             status: response.status,
             statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries())
+            url: response.url,
+            headers: {
+              'content-type': response.headers.get('content-type'),
+              'access-control-allow-origin': response.headers.get('access-control-allow-origin')
+            }
           });
-          if (!response.ok) {
+          
+          if (response.status === 401) {
+            console.error('❌ INVALID TOKEN - Check your VITE_MAPBOX_TOKEN');
+          } else if (response.status === 403) {
+            console.error('❌ TOKEN PERMISSIONS - Check token scopes');
+          } else if (!response.ok) {
             return response.text().then(text => {
-              console.error('❌ Mapbox API error response:', text);
+              console.error('❌ Mapbox API error response body:', text);
             });
+          } else {
+            console.log('✅ Token is valid - API access OK');
           }
         })
         .catch(error => {
-          console.error('❌ Mapbox API test failed:', error);
+          console.error('❌ Mapbox API network error:', error);
+          if (error.name === 'TypeError' && error.message.includes('CORS')) {
+            console.error('❌ CORS issue detected');
+          }
         });
+        
+      // Test tiles access
+      fetch(`https://api.mapbox.com/v4/mapbox.satellite.json?access_token=${mapboxToken}`)
+        .then(response => {
+          console.log('✅ Mapbox Tiles API Response:', response.status);
+        })
+        .catch(error => {
+          console.error('❌ Tiles API test failed:', error);
+        });
+    } else {
+      console.error('❌ Cannot test API - no valid token found');
     }
   }, []);
 
