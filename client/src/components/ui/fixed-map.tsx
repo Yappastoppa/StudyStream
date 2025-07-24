@@ -41,7 +41,18 @@ export function FixedMap(props: FixedMapProps) {
 
   // Check if we have a valid Mapbox token
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-  const hasValidToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.'));
+  const hasValidToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.') && mapboxToken.length > 50);
+  
+  // Debug token info
+  useEffect(() => {
+    console.log('🗺️ Mapbox Token Debug:', {
+      hasToken: !!mapboxToken,
+      tokenLength: mapboxToken?.length,
+      tokenPrefix: mapboxToken?.substring(0, 20) + '...',
+      isValidFormat: hasValidToken,
+      fullToken: mapboxToken // Remove this in production
+    });
+  }, []);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
