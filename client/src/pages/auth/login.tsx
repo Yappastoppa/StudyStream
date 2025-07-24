@@ -42,6 +42,15 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         const error = await response.json();
         if (response.status === 401) {
           // User not found, offer to register
+          if (inviteCode.trim() === "ADMIN2025") {
+            // Auto-register with admin code
+            toast({
+              title: "First time with admin code",
+              description: "Creating your account automatically..."
+            });
+            handleRegister(e);
+            return;
+          }
           setIsRegistering(true);
         } else {
           toast({
