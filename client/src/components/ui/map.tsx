@@ -3,7 +3,10 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Set your Mapbox access token here
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.your_mapbox_token_here';
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
+
+// Check if Mapbox token is available
+const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN);
 
 interface MapProps {
   center?: [number, number];
@@ -27,14 +30,15 @@ interface MapProps {
   className?: string;
 }
 
-export function Map({ 
-  center = [-74.006, 40.7128], 
-  zoom = 13,
-  onMapClick,
-  userLocations = [],
-  alerts = [],
-  className = ""
-}: MapProps) {
+export function Map(props: MapProps) {
+  const {
+    center = [-74.006, 40.7128],
+    zoom = 13,
+    onMapClick,
+    userLocations = [],
+    alerts = [],
+    className = ""
+  } = props;
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarkers = useRef<Map<number, mapboxgl.Marker>>(new Map<number, mapboxgl.Marker>());
@@ -194,6 +198,26 @@ export function Map({
       });
     }
   };
+
+  // Fallback UI when Mapbox token is missing or map fails to load
+  if (!hasMapboxToken) {
+    return (
+      <div className={`relative ${className} bg-racing-dark border-racing-steel/30 rounded-lg`}>
+        <div className="w-full h-full flex items-center justify-center" style={{ minHeight: '400px' }}>
+          <div className="text-center text-racing-gray p-8">
+            <div className="w-16 h-16 bg-racing-steel/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Map Loading</h3>
+            <p className="text-sm">Initializing racing map interface...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative ${className}`}>
