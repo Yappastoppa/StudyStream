@@ -1,79 +1,76 @@
 
 <!DOCTYPE html>
-<html><head>
-  <meta charset="utf-8">
-  <title>Mapbox Test</title>
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet"/>
+<html>
+<head>
+  <title>Mapbox Token Test</title>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
   <style>
-    #map { 
-      position: absolute; 
-      top: 0; 
-      bottom: 0; 
-      width: 100%; 
-      height: 100vh;
-    }
-    #debug {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 1000;
-      max-width: 300px;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #debug { position: absolute; top: 10px; left: 10px; z-index: 1000; 
+             background: rgba(0,0,0,0.8); color: white; padding: 10px; 
+             border-radius: 5px; max-width: 300px; font-size: 12px; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
   </style>
-</head><body>
+</head>
+<body>
   <div id="debug">
-    <div>🔍 MINIMAL MAPBOX TEST</div>
-    <div id="status">Loading...</div>
+    <div>🔍 MAPBOX TOKEN TEST</div>
+    <div id="status">Testing token...</div>
   </div>
   <div id="map"></div>
   
   <script>
     const debug = document.getElementById('status');
-    
-    // Replace with your actual token
     const token = 'pk.eyJ1IjoiczR6b28iLCJhIjoiY21kaHZ1dW45MDV4MjJpb3NxOWl1OHJ2dCJ9.rSxPZ2e6JWgc0Uj12cjKRA';
     
-    debug.innerHTML = `Token: ${token.substring(0, 15)}...<br>Testing...`;
+    debug.innerHTML = `Token: ${token.substring(0, 25)}...<br>Domain: ${window.location.hostname}<br>Testing API...`;
     
-    try {
-      // Test 1: Set token
-      mapboxgl.accessToken = token;
-      debug.innerHTML += '<br>✅ Token set';
-      
-      // Test 2: Create map
-      const map = new mapboxgl.Map({ 
-        container: 'map', 
-        style: 'mapbox://styles/mapbox/dark-v11', 
-        center: [-74.006, 40.7128], 
-        zoom: 13
+    // Test 1: API availability
+    fetch(`https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${token}`)
+      .then(response => {
+        debug.innerHTML += `<br>API Status: ${response.status}`;
+        if (response.ok) {
+          debug.innerHTML += '<br>✅ API accessible';
+          
+          // Test 2: Create map
+          try {
+            mapboxgl.accessToken = token;
+            debug.innerHTML += '<br>✅ Token set';
+            
+            const map = new mapboxgl.Map({
+              container: 'map',
+              style: 'mapbox://styles/mapbox/dark-v11',
+              center: [-74.006, 40.7128],
+              zoom: 13
+            });
+            
+            debug.innerHTML += '<br>✅ Map created';
+            
+            map.on('load', () => {
+              debug.innerHTML += '<br>🎉 MAP LOADED SUCCESSFULLY!';
+              console.log('✅ SUCCESS: Map loaded');
+            });
+            
+            map.on('error', (e) => {
+              debug.innerHTML += `<br>❌ Map error: ${e.error.message}`;
+              console.error('❌ Map error:', e);
+            });
+            
+          } catch (error) {
+            debug.innerHTML += `<br>❌ Map init error: ${error.message}`;
+          }
+          
+        } else {
+          debug.innerHTML += '<br>❌ API not accessible';
+          response.text().then(text => {
+            debug.innerHTML += `<br>Response: ${text.substring(0, 100)}...`;
+          });
+        }
+      })
+      .catch(error => {
+        debug.innerHTML += `<br>❌ Network error: ${error.message}`;
       });
-      
-      debug.innerHTML += '<br>✅ Map created';
-      
-      // Test 3: Listen for events
-      map.on('load', () => {
-        debug.innerHTML += '<br>✅ Map loaded successfully!';
-        console.log('✅ MINIMAL TEST: Map loaded successfully');
-      });
-      
-      map.on('error', (e) => {
-        debug.innerHTML += `<br>❌ Map error: ${e.error.message}`;
-        console.error('❌ MINIMAL TEST: Map error:', e);
-      });
-      
-      map.on('styledata', () => {
-        debug.innerHTML += '<br>🎨 Style loaded';
-      });
-      
-    } catch (error) {
-      debug.innerHTML += `<br>❌ Init error: ${error.message}`;
-      console.error('❌ MINIMAL TEST: Initialization error:', error);
-    }
   </script>
-</body></html>
+</body>
+</html>
