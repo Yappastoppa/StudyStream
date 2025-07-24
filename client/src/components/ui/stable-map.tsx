@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface StableMapProps {
   center?: [number, number];
