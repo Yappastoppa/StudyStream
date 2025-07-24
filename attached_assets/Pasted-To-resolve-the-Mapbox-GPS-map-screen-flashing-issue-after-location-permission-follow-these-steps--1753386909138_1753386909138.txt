@@ -1,0 +1,128 @@
+To resolve the Mapbox GPS/map screen flashing issue after location permission, follow these steps:
+
+### 1. **Verify Location Permission Handling**
+Ensure you're correctly requesting and handling permissions:
+
+**Android (Kotlin/Java):**
+```kotlin
+// Request location permission
+if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+    != PackageManager.PERMISSION_GRANTED) {
+    ActivityCompat.requestPermissions(
+        this, 
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 
+        REQUEST_LOCATION_PERMISSION
+    )
+} else {
+    enableLocation() // Proceed if already granted
+}
+
+// Handle permission result
+override fun onRequestPermissionsResult(...) {
+    if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        enableLocation()
+    } else {
+        // Show error message
+    }
+}
+```
+
+**iOS (Swift):**
+```swift
+// Request location permission
+let manager = CLLocationManager()
+manager.delegate = self
+manager.requestWhenInUseAuthorization()
+
+// Handle authorization change
+func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    if status == .authorizedWhenInUse || status == .authorizedAlways {
+        enableLocation()
+    }
+}
+```
+
+### 2. **Check Mapbox Initialization**
+Ensure Mapbox is properly initialized **before** loading the map:
+
+**Android:**
+```kotlin
+// Initialize Mapbox in onCreate()
+Mapbox.getInstance(this, "pk.your_mapbox_access_token")
+```
+
+**iOS:**
+```swift
+// Set access token in AppDelegate
+MGLMapboxAccessToken = "pk.your_mapbox_access_token"
+```
+
+### 3. **Enable Location Tracking**
+Enable location *after* permission is granted and map is ready:
+
+**Android:**
+```kotlin
+fun enableLocation() {
+    mapView.getMapAsync { mapboxMap ->
+        val locationComponent = mapboxMap.locationComponent
+        locationComponent.activateLocationComponent(
+            LocationComponentActivationOptions.builder(this, mapboxMap.style).build()
+        )
+        locationComponent.isLocationComponentEnabled = true
+        locationComponent.cameraMode = CameraMode.TRACKING // Follow user
+    }
+}
+```
+
+**iOS:**
+```swift
+func enableLocation() {
+    mapView.showsUserLocation = true
+    mapView.userTrackingMode = .follow
+}
+```
+
+### 4. **Lifecycle Methods (Android Only)**
+Ensure all lifecycle methods are forwarded to MapView:
+```kotlin
+override fun onStart() {
+    super.onStart()
+    mapView.onStart()
+}
+
+override fun onResume() {
+    super.onResume()
+    mapView.onResume()
+}
+
+// Similarly for onPause(), onStop(), onDestroy(), onSaveInstanceState()
+```
+
+### 5. **Fix Common Issues**
+- **Access Token**: Verify your Mapbox token is valid (dashboard.mapbox.com).
+- **GPS Hardware**: Test on a real device (emulators often lack proper GPS).
+- **Network Permissions**: Add internet permission in `AndroidManifest.xml`:
+  ```xml
+  <uses-permission android:name="android.permission.INTERNET" />
+  ```
+- **Map Style URL**: Use a valid style (e.g., `Style.MAPBOX_STREETS`).
+
+### 6. **Debugging Steps**
+- Check Logcat (Android) / Console (iOS) for errors.
+- Test without location first (set a fixed camera position).
+- Ensure `MapView` is properly added to your layout/view hierarchy.
+
+### Example Flow
+```mermaid
+graph TD
+    A[Request Location Permission] --> B{Granted?}
+    B -->|Yes| C[Initialize Mapbox]
+    C --> D[Enable Location Tracking]
+    B -->|No| E[Show Error Message]
+```
+
+If the issue persists, share:
+- Platform (Android/iOS)
+- Mapbox SDK version
+- Error logs
+- Code snippets of your map initialization
