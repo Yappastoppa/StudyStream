@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SimpleMap } from "@/components/ui/simple-map";
+import { RacingMap } from "@/components/ui/racing-map";
 import { SpeedHud } from "@/components/racing/speed-hud";
 import { ActionButtons } from "@/components/racing/action-buttons";
 import { SideMenu } from "@/components/racing/side-menu";
@@ -284,10 +284,11 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
       {/* Map Container */}
-      <SimpleMap
+      <RacingMap
         center={lat && lng ? [lng, lat] : undefined}
         zoom={15}
-        userLocations={mapUserLocations}
+        onMapClick={(lng, lat) => console.log('Map clicked:', lng, lat)}
+        userLocations={mapUserLocations}  
         alerts={alerts}
         className="absolute inset-0"
       />
