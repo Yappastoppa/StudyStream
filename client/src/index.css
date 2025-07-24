@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 5%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(197, 100%, 50%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+  
+  /* Racing specific colors */
+  --racing-dark: hsl(0, 0%, 5%);
+  --racing-charcoal: hsl(0, 0%, 10%);
+  --racing-steel: hsl(0, 0%, 16%);
+  --racing-gray: hsl(0, 0%, 40%);
+  --racing-blue: hsl(197, 100%, 50%);
+  --racing-red: hsl(349, 100%, 60%);
+  --racing-green: hsl(158, 100%, 55%);
+  --racing-amber: hsl(43, 100%, 50%);
+}
+
+.dark {
+  --background: hsl(0, 0%, 5%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(197, 100%, 50%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .racing-dark { background-color: var(--racing-dark); }
+  .racing-charcoal { background-color: var(--racing-charcoal); }
+  .racing-steel { background-color: var(--racing-steel); }
+  .racing-gray { color: var(--racing-gray); }
+  .racing-blue { color: var(--racing-blue); }
+  .racing-red { color: var(--racing-red); }
+  .racing-green { color: var(--racing-green); }
+  .racing-amber { color: var(--racing-amber); }
+  
+  .bg-racing-dark { background-color: var(--racing-dark); }
+  .bg-racing-charcoal { background-color: var(--racing-charcoal); }
+  .bg-racing-steel { background-color: var(--racing-steel); }
+  .bg-racing-blue { background-color: var(--racing-blue); }
+  .bg-racing-red { background-color: var(--racing-red); }
+  .bg-racing-green { background-color: var(--racing-green); }
+  .bg-racing-amber { background-color: var(--racing-amber); }
+  
+  .border-racing-steel { border-color: var(--racing-steel); }
+  .border-racing-gray { border-color: var(--racing-gray); }
+  .border-racing-blue { border-color: var(--racing-blue); }
+  .border-racing-red { border-color: var(--racing-red); }
+  .border-racing-green { border-color: var(--racing-green); }
+  .border-racing-amber { border-color: var(--racing-amber); }
+  
+  .text-racing-gray { color: var(--racing-gray); }
+  .text-racing-blue { color: var(--racing-blue); }
+  .text-racing-red { color: var(--racing-red); }
+  .text-racing-green { color: var(--racing-green); }
+  .text-racing-amber { color: var(--racing-amber); }
+}
+
+/* Custom scrollbars for racing theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--racing-charcoal);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--racing-blue);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(197, 100%, 45%);
+}
+
+/* Animation utilities */
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px var(--racing-blue); }
+  50% { box-shadow: 0 0 20px var(--racing-blue), 0 0 30px var(--racing-blue); }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Map styles */
+.mapboxgl-map {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mapboxgl-popup-content {
+  background: var(--racing-dark) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--racing-steel) !important;
+}
+
+.mapboxgl-ctrl-group {
+  background: var(--racing-dark) !important;
+  border: 1px solid var(--racing-steel) !important;
+}
+
+.mapboxgl-ctrl-group button {
+  background-color: var(--racing-dark) !important;
+  color: var(--foreground) !important;
+}
+
+.mapboxgl-ctrl-group button:hover {
+  background-color: var(--racing-steel) !important;
+}
