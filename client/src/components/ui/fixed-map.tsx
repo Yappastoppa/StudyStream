@@ -41,7 +41,7 @@ export function FixedMap(props: FixedMapProps) {
 
   // Check if we have a valid Mapbox token
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-  const hasValidToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.') && mapboxToken.length > 50);
+  const hasValidToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.') && mapboxToken.length > 30);
   
   // Debug token info
   useEffect(() => {
