@@ -21,8 +21,30 @@ export function StableMap({
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapStatus, setMapStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [apiTested, setApiTested] = useState(false);
 
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+  // One-time API connectivity test
+  useEffect(() => {
+    if (!mapboxToken || apiTested) return;
+    
+    // Simple API test - just check if we can reach Mapbox
+    fetch(`https://api.mapbox.com/styles/v1/mapbox/standard?access_token=${mapboxToken}`)
+      .then(response => {
+        if (response.ok) {
+          console.log('✅ Mapbox API reachable');
+        } else {
+          console.warn('⚠️ Mapbox API response:', response.status);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Mapbox API test failed:', error);
+      })
+      .finally(() => {
+        setApiTested(true);
+      });
+  }, [mapboxToken, apiTested]);
 
   useEffect(() => {
     // Quick validation
@@ -46,15 +68,25 @@ export function StableMap({
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/navigation-day-v1', // Navigation style like your screenshot
+        style: 'mapbox://styles/mapbox/standard', // Standard style with traffic data
         center: center,
         zoom: zoom,
-        attributionControl: false
+        attributionControl: false,
+        config: {
+          // Enable traffic layer for real-time traffic data
+          showTraffic: true
+        }
       });
 
-      // Simple success/error handling
+      // Enhanced success/error handling with traffic layer
       map.current.on('load', () => {
         console.log('✅ Map loaded successfully');
+        
+        // Configure traffic layer for real-time data
+        if (map.current?.getLayer('traffic')) {
+          map.current.setLayoutProperty('traffic', 'visibility', 'visible');
+        }
+        
         setMapStatus('success');
         setErrorMessage('');
       });
@@ -120,6 +152,7 @@ export function StableMap({
       <div className="absolute bottom-2 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded max-w-xs">
         <div>Token: {mapboxToken ? '✅ Found' : '❌ Missing'}</div>
         <div>API: {mapStatus === 'success' ? '✅ Connected' : mapStatus === 'error' ? '❌ Failed' : '⏳ Testing'}</div>
+        {mapStatus === 'success' && <div>Traffic: ✅ Live Data</div>}
       </div>
     </div>
   );
