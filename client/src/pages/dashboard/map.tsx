@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Map } from "@/components/ui/map";
+import { MapFallback } from "@/components/ui/map-fallback";
 import { SpeedHud } from "@/components/racing/speed-hud";
 import { ActionButtons } from "@/components/racing/action-buttons";
 import { SideMenu } from "@/components/racing/side-menu";
@@ -284,13 +285,21 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
       {/* Map Container */}
-      <Map
-        center={lat && lng ? [lng, lat] : undefined}
-        zoom={15}
-        userLocations={mapUserLocations}
-        alerts={alerts}
-        className="absolute inset-0"
-      />
+      {import.meta.env.VITE_MAPBOX_TOKEN ? (
+        <Map
+          center={lat && lng ? [lng, lat] : undefined}
+          zoom={15}
+          userLocations={mapUserLocations}
+          alerts={alerts}
+          className="absolute inset-0"
+        />
+      ) : (
+        <MapFallback
+          userLocations={mapUserLocations}
+          alerts={alerts}
+          className="absolute inset-0"
+        />
+      )}
 
       {/* Top HUD Bar */}
       <div className="absolute top-0 left-0 right-0 z-30">

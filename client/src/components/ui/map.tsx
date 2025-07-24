@@ -31,14 +31,12 @@ interface MapProps {
 }
 
 export function Map(props: MapProps) {
-  const {
-    center = [-74.006, 40.7128],
-    zoom = 13,
-    onMapClick,
-    userLocations = [],
-    alerts = [],
-    className = ""
-  } = props;
+  const center = props.center || [-74.006, 40.7128];
+  const zoom = props.zoom || 13;
+  const onMapClick = props.onMapClick;
+  const userLocations = props.userLocations || [];
+  const alerts = props.alerts || [];
+  const className = props.className || "";
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarkers = useRef<Map<number, mapboxgl.Marker>>(new Map<number, mapboxgl.Marker>());
@@ -211,8 +209,8 @@ export function Map(props: MapProps) {
                 <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Map Loading</h3>
-            <p className="text-sm">Initializing racing map interface...</p>
+            <h3 className="text-xl font-semibold text-white mb-2">Map Configuration Needed</h3>
+            <p className="text-sm">Please create a new Mapbox token with the required permissions</p>
           </div>
         </div>
       </div>
