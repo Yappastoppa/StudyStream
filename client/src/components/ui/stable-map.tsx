@@ -71,21 +71,15 @@ export function StableMap({
         style: 'mapbox://styles/mapbox/standard', // Standard style with traffic data
         center: center,
         zoom: zoom,
-        attributionControl: false,
-        config: {
-          // Enable traffic layer for real-time traffic data
-          showTraffic: true
-        }
+        attributionControl: false
       });
 
-      // Enhanced success/error handling with traffic layer
+      // Enhanced success/error handling with Standard style
       map.current.on('load', () => {
         console.log('✅ Map loaded successfully');
         
-        // Configure traffic layer for real-time data
-        if (map.current?.getLayer('traffic')) {
-          map.current.setLayoutProperty('traffic', 'visibility', 'visible');
-        }
+        // Configure Standard style - traffic data is included by default
+        // You can add Standard style configuration here if needed
         
         setMapStatus('success');
         setErrorMessage('');
