@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mapbox Basic Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body, html { height: 100%; margin: 0; }
+    #map { width: 100vw; height: 100vh; }
+    #debug {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 1000;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="debug">Testing Mapbox...</div>
+  <div id="map"></div>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+  <script>
+    const debug = document.getElementById('debug');
+    
+    // Your token
+    const token = "pk.eyJ1IjoiczR6b28iLCJhIjoiY21kaHZ1dW45MDV4MjJpb3NxOWl1OHJ2dCJ9.rSxPZ2e6JWgc0Uj12cjKRA";
+    debug.innerHTML = `Token: ${token.substring(0, 15)}...<br>Testing API...`;
+    
+    // Test API first
+    fetch(`https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${token}`)
+      .then(response => {
+        debug.innerHTML += `<br>API Status: ${response.status}`;
+        
+        if (response.ok) {
+          debug.innerHTML += '<br>✅ API working, creating map...';
+          
+          // Initialize map
+          mapboxgl.accessToken = token;
+          const map = new mapboxgl.Map({
+            container: "map",
+            style: "mapbox://styles/mapbox/streets-v12",
+            center: [-74.5, 40], // New Jersey, USA
+            zoom: 9
+          });
+          
+          map.on('load', () => {
+            debug.innerHTML += '<br>🎉 MAP LOADED SUCCESSFULLY!';
+            console.log("✅ Map loaded!");
+          });
+          
+          map.on('error', (e) => {
+            debug.innerHTML += `<br>❌ Map error: ${e.error.message}`;
+            console.error("❌ Map error:", e.error);
+          });
+          
+        } else {
+          debug.innerHTML += '<br>❌ API failed';
+          response.text().then(text => {
+            debug.innerHTML += `<br>Response: ${text.substring(0, 100)}...`;
+          });
+        }
+      })
+      .catch(error => {
+        debug.innerHTML += `<br>❌ Network error: ${error.message}`;
+        console.error("Network error:", error);
+      });
+  </script>
+</body>
+</html>
