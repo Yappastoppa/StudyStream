@@ -48,8 +48,47 @@ export function StableMap(props: StableMapProps) {
       tokenLength: mapboxToken?.length,
       tokenPrefix: mapboxToken?.substring(0, 10) + '...',
       isValidFormat: hasMapboxToken,
-      envKeys: Object.keys(import.meta.env).filter(k => k.includes('MAPBOX'))
+      envKeys: Object.keys(import.meta.env).filter(k => k.includes('MAPBOX')),
+      allEnvKeys: Object.keys(import.meta.env),
+      rawToken: mapboxToken,
+      userAgent: navigator.userAgent,
+      windowLocation: window.location.href
     });
+    
+    // Test network connectivity
+    console.log('🌐 Testing network connectivity...');
+    fetch('https://httpbin.org/get')
+      .then(response => {
+        console.log('✅ Network test passed:', response.status);
+        return response.json();
+      })
+      .then(data => {
+        console.log('📡 Network response:', data);
+      })
+      .catch(error => {
+        console.error('❌ Network test failed:', error);
+      });
+    
+    // Test Mapbox API specifically if we have a token
+    if (hasMapboxToken) {
+      console.log('🗝️ Testing Mapbox API access...');
+      fetch(`https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${mapboxToken}`)
+        .then(response => {
+          console.log('🗺️ Mapbox API test:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries())
+          });
+          if (!response.ok) {
+            return response.text().then(text => {
+              console.error('❌ Mapbox API error response:', text);
+            });
+          }
+        })
+        .catch(error => {
+          console.error('❌ Mapbox API test failed:', error);
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -64,49 +103,96 @@ export function StableMap(props: StableMapProps) {
 
     const initializeMap = async () => {
       try {
-        console.log('🚀 Initializing Mapbox map...');
+        console.log('🚀 Starting map initialization...');
+        console.log('📍 Map center:', center);
+        console.log('🔍 Map zoom:', zoom);
+        console.log('📦 Container element:', mapContainer.current);
 
         // Dynamic import of Mapbox
+        console.log('📥 Loading Mapbox GL JS...');
         const mapboxgl = await import('mapbox-gl');
+        console.log('✅ Mapbox GL JS loaded:', typeof mapboxgl.default);
 
         // Set access token
+        console.log('🗝️ Setting Mapbox access token...');
         mapboxgl.default.accessToken = mapboxToken;
-        console.log('✅ Mapbox token set');
+        console.log('✅ Token set. Current token:', mapboxgl.default.accessToken?.substring(0, 20) + '...');
 
-        // Create map instance with simple dark style
-        map.current = new mapboxgl.default.Map({
+        // Test if we can create a basic map
+        console.log('🏗️ Creating map instance...');
+        const mapConfig = {
           container: mapContainer.current!,
           style: 'mapbox://styles/mapbox/dark-v11',
           center: center,
           zoom: zoom,
           attributionControl: false
-        });
+        };
+        console.log('⚙️ Map config:', mapConfig);
 
-        console.log('✅ Map instance created');
+        map.current = new mapboxgl.default.Map(mapConfig);
+        console.log('✅ Map instance created successfully:', map.current);
 
-        // Add event listeners
+        // Add comprehensive event listeners
+        console.log('🎧 Adding event listeners...');
+        
         map.current.on('load', () => {
-          console.log('✅ Map loaded successfully');
+          console.log('✅ MAP LOAD EVENT FIRED!');
+          console.log('📊 Map state:', {
+            loaded: map.current.loaded(),
+            style: map.current.getStyle()?.name,
+            zoom: map.current.getZoom(),
+            center: map.current.getCenter()
+          });
           setIsMapLoaded(true);
           setMapError(null);
         });
 
         map.current.on('error', (e: any) => {
-          console.error('❌ Mapbox error:', e);
+          console.error('❌ MAP ERROR EVENT:', e);
+          console.error('🔍 Full error object:', JSON.stringify(e, null, 2));
           const errorMsg = e.error?.message || e.message || 'Unknown map error';
-          console.error('Error details:', {
+          console.error('📝 Error details:', {
             type: e.error?.type,
             status: e.error?.status,
             message: errorMsg,
-            url: e.error?.url
+            url: e.error?.url,
+            stack: e.error?.stack
           });
           setMapError(`Map error: ${errorMsg}`);
           setIsMapLoaded(true);
         });
 
         map.current.on('styledata', () => {
-          console.log('✅ Map style loaded');
+          console.log('🎨 Style data loaded');
         });
+
+        map.current.on('sourcedata', (e: any) => {
+          console.log('📡 Source data event:', e.sourceDataType, e.isSourceLoaded);
+        });
+
+        map.current.on('idle', () => {
+          console.log('😴 Map idle - rendering complete');
+        });
+
+        map.current.on('render', () => {
+          console.log('🖼️ Map render event');
+        });
+
+        // Add debugging for style loading
+        console.log('🎨 Checking style loading...');
+        const checkStyleStatus = () => {
+          if (map.current) {
+            console.log('🔍 Style status:', {
+              loaded: map.current.loaded(),
+              isStyleLoaded: map.current.isStyleLoaded(),
+              style: map.current.getStyle()
+            });
+          }
+        };
+        
+        setTimeout(checkStyleStatus, 1000);
+        setTimeout(checkStyleStatus, 3000);
+        setTimeout(checkStyleStatus, 5000);
 
         if (onMapClick) {
           map.current.on('click', (e: any) => {
@@ -119,7 +205,18 @@ export function StableMap(props: StableMapProps) {
         map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
 
       } catch (error) {
-        console.error('❌ Failed to initialize Mapbox:', error);
+        console.error('❌ MAPBOX INITIALIZATION FAILED!');
+        console.error('🔍 Error type:', typeof error);
+        console.error('📝 Error message:', error instanceof Error ? error.message : String(error));
+        console.error('📚 Error stack:', error instanceof Error ? error.stack : 'No stack available');
+        console.error('🔍 Full error object:', error);
+        
+        // Try to get more specific error info
+        if (error instanceof Error) {
+          console.error('🔎 Error name:', error.name);
+          console.error('🔎 Error cause:', (error as any).cause);
+        }
+        
         setMapError(`Initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setIsMapLoaded(true);
       }
