@@ -1,0 +1,31 @@
+If your Mapbox map is not loading on your website, here are the most common issues and troubleshooting steps based on the official documentation:
+
+1. **Access Token Issues**  
+   - Make sure you have replaced `YOUR_MAPBOX_ACCESS_TOKEN` in your code with a valid Mapbox access token from your [Mapbox account](https://account.mapbox.com).  
+   - If your access token is missing or invalid, the map will not load. You can test your token by visiting:  
+     ```
+     https://api.mapbox.com/styles/v1/mapbox/light-v11.html?title=true&access_token=YOUR_MAPBOX_ACCESS_TOKEN
+     ```
+     If the page doesn't load, generate a new token and try again [here](https://console.mapbox.com/account/access-tokens/) [Blank or missing map tiles](https://docs.mapbox.com/help/troubleshooting/blank-tiles/).
+
+2. **Style or Tileset ID Issues**  
+   - Ensure your style URL and tileset IDs are valid. Invalid IDs will prevent the map from loading. You can check your style and tileset IDs as described in the [troubleshooting guide](https://docs.mapbox.com/help/troubleshooting/blank-tiles/#your-style-id-is-invalid).
+
+3. **WebGL Support**  
+   - Mapbox GL JS requires WebGL. Make sure your browser and device support and have enabled WebGL. You can check this at [get.webgl.org](https://get.webgl.org/) [WebGL is not supported](https://docs.mapbox.com/help/troubleshooting/blank-tiles/#webgl-is-not-supported).
+
+4. **Browser Compatibility**  
+   - Mapbox GL JS works with most modern browsers, but starting with v2.0.0, it is not compatible with any version of Internet Explorer. Use Chrome, Firefox, Safari, or Edge (latest versions) [Browser support](https://docs.mapbox.com/help/troubleshooting/mapbox-browser-support/).
+
+5. **Network or Firewall Issues**  
+   - If you are behind a firewall, ensure that `api.mapbox.com` is allowed [Working with firewalls](https://docs.mapbox.com/help/troubleshooting/firewalls/).
+
+6. **Account Issues**  
+   - If your Mapbox account is deactivated (e.g., due to unpaid invoices), your maps will not load. Log in to your account and check your billing status [Blank or missing map tiles](https://docs.mapbox.com/help/troubleshooting/blank-tiles/).
+
+**Next Steps:**  
+- Open your browser’s developer tools (F12) and check the console and network tabs for errors.
+- Double-check your access token and style URL.
+- Make sure you are using a supported browser and that WebGL is enabled.
+
+If you still have issues, please provide any error messages from your browser’s console for more targeted help.
