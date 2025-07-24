@@ -43,6 +43,15 @@ export function StableMap(props: StableMapProps) {
 
   // Debug logging
   useEffect(() => {
+    console.log('🔍 STEP 1: Environment Check');
+    console.log('Raw env object:', import.meta.env);
+    console.log('Token from env:', import.meta.env.VITE_MAPBOX_TOKEN);
+    console.log('Token variable:', mapboxToken);
+    console.log('Token exists:', !!mapboxToken);
+    console.log('Token length:', mapboxToken?.length);
+    console.log('Token starts with pk.:', mapboxToken?.startsWith('pk.'));
+    console.log('hasMapboxToken result:', hasMapboxToken);
+    
     console.log('🗺️ Mapbox Debug Info:', {
       hasToken: !!mapboxToken,
       tokenLength: mapboxToken?.length,
@@ -103,23 +112,40 @@ export function StableMap(props: StableMapProps) {
 
     const initializeMap = async () => {
       try {
+        console.log('🔍 STEP 2: Map Initialization Started');
         console.log('🚀 Starting map initialization...');
         console.log('📍 Map center:', center);
         console.log('🔍 Map zoom:', zoom);
         console.log('📦 Container element:', mapContainer.current);
+        console.log('📦 Container exists:', !!mapContainer.current);
+        console.log('📦 Container dimensions:', mapContainer.current ? {
+          width: mapContainer.current.offsetWidth,
+          height: mapContainer.current.offsetHeight,
+          id: mapContainer.current.id,
+          className: mapContainer.current.className
+        } : 'null');
 
         // Dynamic import of Mapbox
-        console.log('📥 Loading Mapbox GL JS...');
+        console.log('🔍 STEP 3: Loading Mapbox GL JS...');
+        console.log('📥 About to import mapbox-gl...');
         const mapboxgl = await import('mapbox-gl');
-        console.log('✅ Mapbox GL JS loaded:', typeof mapboxgl.default);
+        console.log('✅ Import successful!');
+        console.log('📦 Mapbox object:', mapboxgl);
+        console.log('📦 Mapbox.default:', mapboxgl.default);
+        console.log('📦 Mapbox.default.Map:', mapboxgl.default?.Map);
+        console.log('📦 Mapbox version:', mapboxgl.default?.version);
 
         // Set access token
-        console.log('🗝️ Setting Mapbox access token...');
+        console.log('🔍 STEP 4: Setting access token...');
+        console.log('🗝️ Token before setting:', mapboxgl.default.accessToken);
+        console.log('🗝️ Our token:', mapboxToken);
         mapboxgl.default.accessToken = mapboxToken;
-        console.log('✅ Token set. Current token:', mapboxgl.default.accessToken?.substring(0, 20) + '...');
+        console.log('🗝️ Token after setting:', mapboxgl.default.accessToken);
+        console.log('✅ Token set successfully');
 
         // Test if we can create a basic map
-        console.log('🏗️ Creating map instance...');
+        console.log('🔍 STEP 5: Creating map instance...');
+        console.log('🏗️ About to create map...');
         const mapConfig = {
           container: mapContainer.current!,
           style: 'mapbox://styles/mapbox/dark-v11',
@@ -129,13 +155,19 @@ export function StableMap(props: StableMapProps) {
         };
         console.log('⚙️ Map config:', mapConfig);
 
+        console.log('🔍 STEP 6: Calling new Map()...');
         map.current = new mapboxgl.default.Map(mapConfig);
-        console.log('✅ Map instance created successfully:', map.current);
+        console.log('✅ Map constructor completed!');
+        console.log('📦 Map instance:', map.current);
+        console.log('📦 Map instance type:', typeof map.current);
+        console.log('📦 Map loaded state:', map.current?.loaded?.());
 
         // Add comprehensive event listeners
-        console.log('🎧 Adding event listeners...');
+        console.log('🔍 STEP 7: Adding event listeners...');
+        console.log('🎧 Setting up load listener...');
         
         map.current.on('load', () => {
+          console.log('🔍 STEP 8: LOAD EVENT FIRED!');
           console.log('✅ MAP LOAD EVENT FIRED!');
           console.log('📊 Map state:', {
             loaded: map.current.loaded(),
@@ -143,6 +175,7 @@ export function StableMap(props: StableMapProps) {
             zoom: map.current.getZoom(),
             center: map.current.getCenter()
           });
+          console.log('🔍 Setting state: isMapLoaded=true, mapError=null');
           setIsMapLoaded(true);
           setMapError(null);
         });
@@ -162,47 +195,75 @@ export function StableMap(props: StableMapProps) {
           setIsMapLoaded(true);
         });
 
-        map.current.on('styledata', () => {
-          console.log('🎨 Style data loaded');
+        console.log('🎧 Setting up all event listeners...');
+        
+        map.current.on('styledata', (e: any) => {
+          console.log('🔍 STYLE DATA EVENT:', e);
+          console.log('🎨 Style data loaded, type:', e.dataType);
         });
 
         map.current.on('sourcedata', (e: any) => {
+          console.log('🔍 SOURCE DATA EVENT:', e);
           console.log('📡 Source data event:', e.sourceDataType, e.isSourceLoaded);
         });
 
+        map.current.on('data', (e: any) => {
+          console.log('🔍 DATA EVENT:', e.dataType);
+        });
+
         map.current.on('idle', () => {
+          console.log('🔍 IDLE EVENT FIRED');
           console.log('😴 Map idle - rendering complete');
         });
 
         map.current.on('render', () => {
-          console.log('🖼️ Map render event');
+          console.log('🖼️ Map render event (frequent)');
         });
 
+        console.log('🔍 STEP 9: Setting up status monitoring...');
         // Add debugging for style loading
         console.log('🎨 Checking style loading...');
         const checkStyleStatus = () => {
           if (map.current) {
-            console.log('🔍 Style status:', {
+            console.log('🔍 Style status check:', {
               loaded: map.current.loaded(),
               isStyleLoaded: map.current.isStyleLoaded(),
-              style: map.current.getStyle()
+              style: map.current.getStyle(),
+              zoom: map.current.getZoom(),
+              center: map.current.getCenter()
             });
+          } else {
+            console.log('❌ map.current is null during status check');
           }
         };
         
-        setTimeout(checkStyleStatus, 1000);
-        setTimeout(checkStyleStatus, 3000);
-        setTimeout(checkStyleStatus, 5000);
+        setTimeout(() => {
+          console.log('🔍 1-second status check:');
+          checkStyleStatus();
+        }, 1000);
+        setTimeout(() => {
+          console.log('🔍 3-second status check:');
+          checkStyleStatus();
+        }, 3000);
+        setTimeout(() => {
+          console.log('🔍 5-second status check:');
+          checkStyleStatus();
+        }, 5000);
 
         if (onMapClick) {
+          console.log('🖱️ Adding click handler...');
           map.current.on('click', (e: any) => {
             console.log('🖱️ Map clicked:', e.lngLat);
             onMapClick(e.lngLat.lng, e.lngLat.lat);
           });
         }
 
+        console.log('🔍 STEP 10: Adding navigation controls...');
         // Add navigation controls
         map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
+        console.log('✅ Navigation controls added');
+        
+        console.log('🔍 STEP 11: Map initialization completed successfully!');
 
       } catch (error) {
         console.error('❌ MAPBOX INITIALIZATION FAILED!');
@@ -427,8 +488,18 @@ export function StableMap(props: StableMapProps) {
     </div>
   );
 
+  console.log('🔍 RENDER CHECK:', {
+    isMapLoaded,
+    hasMapboxToken,
+    mapError,
+    showingLoading: !isMapLoaded && hasMapboxToken && !mapError,
+    showingMap: hasMapboxToken && !mapError,
+    showingFallback: !hasMapboxToken || mapError
+  });
+
   // Show enhanced loading state
   if (!isMapLoaded && hasMapboxToken && !mapError) {
+    console.log('🔍 RENDERING: Loading state');
     return (
       <div className={`relative ${className} bg-racing-dark`}>
         <div className="w-full h-full flex items-center justify-center" style={{ minHeight: '400px' }}>
@@ -442,10 +513,17 @@ export function StableMap(props: StableMapProps) {
     );
   }
 
+  console.log('🔍 FINAL RENDER:', {
+    renderingMap: hasMapboxToken && !mapError,
+    renderingFallback: !hasMapboxToken || mapError,
+    mapContainer: !!mapContainer.current
+  });
+
   return (
     <div className={`relative ${className}`}>
       {hasMapboxToken && !mapError ? (
         <>
+          {console.log('🔍 RENDERING: Map container')}
           <div 
             ref={mapContainer} 
             className="w-full h-full" 
@@ -466,7 +544,10 @@ export function StableMap(props: StableMapProps) {
           )}
         </>
       ) : (
-        <RacingInterface />
+        <>
+          {console.log('🔍 RENDERING: Fallback interface')}
+          <RacingInterface />
+        </>
       )}
     </div>
   );
