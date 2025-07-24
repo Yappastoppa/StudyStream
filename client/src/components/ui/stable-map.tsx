@@ -28,7 +28,7 @@ export function StableMap({
   // One-time API connectivity test
   useEffect(() => {
     if (!mapboxToken || apiTested) return;
-    
+
     // Simple API test - just check if we can reach Mapbox
     fetch(`https://api.mapbox.com/styles/v1/mapbox/standard?access_token=${mapboxToken}`)
       .then(response => {
@@ -77,10 +77,10 @@ export function StableMap({
       // Enhanced success/error handling with Standard style
       map.current.on('load', () => {
         console.log('✅ Map loaded successfully');
-        
+
         // Configure Standard style - traffic data is included by default
         // You can add Standard style configuration here if needed
-        
+
         setMapStatus('success');
         setErrorMessage('');
       });

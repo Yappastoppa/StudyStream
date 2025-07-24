@@ -39,18 +39,20 @@ export function FixedMap(props: FixedMapProps) {
   const [showFallback, setShowFallback] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get token from environment - Vite exposes env vars via import.meta.env
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+
   // Check if we have a valid Mapbox token
-  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-  const hasValidToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.') && mapboxToken.length > 30);
-  
+  const hasValidToken = Boolean(MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.') && MAPBOX_TOKEN.length > 30);
+
   // Debug token info
   useEffect(() => {
     console.log('🗺️ Mapbox Token Debug:', {
-      hasToken: !!mapboxToken,
-      tokenLength: mapboxToken?.length,
-      tokenPrefix: mapboxToken?.substring(0, 20) + '...',
+      hasToken: !!MAPBOX_TOKEN,
+      tokenLength: MAPBOX_TOKEN?.length,
+      tokenPrefix: MAPBOX_TOKEN?.substring(0, 20) + '...',
       isValidFormat: hasValidToken,
-      fullToken: mapboxToken // Remove this in production
+      fullToken: MAPBOX_TOKEN // Remove this in production
     });
   }, []);
 
@@ -84,9 +86,9 @@ export function FixedMap(props: FixedMapProps) {
       try {
         // Dynamic import of Mapbox
         const mapboxgl = await import('mapbox-gl');
-        
+
         // Set access token
-        mapboxgl.default.accessToken = mapboxToken;
+        mapboxgl.default.accessToken = MAPBOX_TOKEN;
 
         if (!isComponentMounted) return;
 
@@ -102,12 +104,12 @@ export function FixedMap(props: FixedMapProps) {
         // Add event listeners
         map.current.on('load', () => {
           if (!isComponentMounted) return;
-          
+
           clearTimeout(timeoutId);
           setIsMapLoaded(true);
           setIsLoading(false);
           setMapError(null);
-          
+
           // Add controls after map loads
           try {
             map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
@@ -127,7 +129,7 @@ export function FixedMap(props: FixedMapProps) {
         map.current.on('error', (e: any) => {
           console.error('Mapbox error:', e);
           if (!isComponentMounted) return;
-          
+
           clearTimeout(timeoutId);
           setMapError(`Map error: ${e.error?.message || 'Unknown error'}`);
           setShowFallback(true);
@@ -146,7 +148,7 @@ export function FixedMap(props: FixedMapProps) {
       } catch (error) {
         console.error('Failed to initialize Mapbox:', error);
         if (!isComponentMounted) return;
-        
+
         clearTimeout(timeoutId);
         setMapError(`Initialization error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setShowFallback(true);
@@ -171,7 +173,7 @@ export function FixedMap(props: FixedMapProps) {
       }
       markersRef.current.clear();
     };
-  }, [center, zoom, onMapClick, hasValidToken, mapboxToken]);
+  }, [center, zoom, onMapClick, hasValidToken, MAPBOX_TOKEN]);
 
   // Update markers when locations change
   useEffect(() => {
@@ -383,7 +385,7 @@ export function FixedMap(props: FixedMapProps) {
           style={{ minHeight: '400px' }}
         />
       )}
-      
+
       {/* GPS Active indicator when map is loaded */}
       {isMapLoaded && !showFallback && !mapError && (
         <div className="absolute top-4 left-4 bg-racing-charcoal/90 backdrop-blur-sm rounded-lg p-3 text-white text-sm">
