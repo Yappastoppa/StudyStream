@@ -322,6 +322,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User management endpoints
+  app.get('/api/users/:id', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get user' });
+    }
+  });
+
+  app.put('/api/users/:id', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const updatedUser = await storage.updateUser(userId, updates);
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update user' });
+    }
+  });
+
+  // Event management endpoints
+  app.get('/api/events/user/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const events = await storage.getUserEvents(userId);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get user events' });
+    }
+  });
+
+  app.put('/api/events/:id', async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const updatedEvent = await storage.updateEvent(eventId, updates);
+      if (!updatedEvent) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      
+      res.json(updatedEvent);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update event' });
+    }
+  });
+
+  app.delete('/api/events/:id', async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const success = await storage.updateEvent(eventId, { isActive: false });
+      
+      if (!success) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      
+      res.json({ message: 'Event cancelled successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to cancel event' });
+    }
+  });
+
+  // Alert management endpoints
+  app.get('/api/alerts/user/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const alerts = await storage.getUserAlerts(userId);
+      res.json(alerts);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get user alerts' });
+    }
+  });
+
+  app.delete('/api/alerts/:id', async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id);
+      const success = await storage.deleteAlert(alertId);
+      
+      if (!success) {
+        return res.status(404).json({ message: 'Alert not found' });
+      }
+      
+      res.json({ message: 'Alert deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to delete alert' });
+    }
+  });
+
+  // Statistics endpoints
+  app.get('/api/stats/user/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const stats = await storage.getUserStats(userId);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get user statistics' });
+    }
+  });
+
+  app.get('/api/leaderboard', async (req, res) => {
+    try {
+      const schema = z.object({
+        type: z.enum(['speed', 'events', 'alerts']).default('speed'),
+        limit: z.string().transform(Number).default('10')
+      });
+      
+      const { type, limit } = schema.parse(req.query);
+      const leaderboard = await storage.getLeaderboard(type, limit);
+      
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to get leaderboard' });
+    }
+  });
+
   // Cleanup expired invite codes periodically
   setInterval(async () => {
     await storage.cleanupExpiredCodes();

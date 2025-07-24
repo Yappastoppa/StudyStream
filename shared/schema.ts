@@ -55,9 +55,21 @@ export const eventParticipants = pgTable("event_participants", {
 });
 
 // Schemas
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  lastSeen: true,
+export const insertUserSchema = z.object({
+  username: z.string().min(3).max(20),
+  inviteCode: z.string(),
+  currentLat: z.number().optional(),
+  currentLng: z.number().optional(),
+  currentSpeed: z.number().default(0),
+  isGhostMode: z.boolean().default(false),
+  maxSpeed: z.number().optional(),
+  totalDistance: z.number().default(0),
+});
+
+export const selectUserSchema = insertUserSchema.extend({
+  id: z.number(),
+  createdAt: z.date(),
+  lastSeen: z.date().optional(),
 });
 
 export const insertInviteCodeSchema = createInsertSchema(inviteCodes).omit({

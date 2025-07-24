@@ -230,6 +230,98 @@ export class MemStorage implements IStorage {
     return updatedEvent;
   }
 
+  // Additional alert methods
+  async getUserAlerts(userId: number): Promise<Alert[]> {
+    return Array.from(this.alerts.values()).filter(alert => alert.userId === userId);
+  }
+
+  async deleteAlert(id: number): Promise<boolean> {
+    return this.alerts.delete(id);
+  }
+
+  // Statistics methods
+  async getUserStats(userId: number): Promise<{
+    totalEvents: number;
+    totalAlerts: number;
+    maxSpeed: number;
+    totalDistance: number;
+  }> {
+    const user = this.users.get(userId);
+    if (!user) {
+      return { totalEvents: 0, totalAlerts: 0, maxSpeed: 0, totalDistance: 0 };
+    }
+
+    const userEvents = Array.from(this.events.values()).filter(
+      event => event.createdBy === userId
+    );
+    const userAlerts = Array.from(this.alerts.values()).filter(
+      alert => alert.userId === userId
+    );
+
+    return {
+      totalEvents: userEvents.length,
+      totalAlerts: userAlerts.length,
+      maxSpeed: user.maxSpeed || 0,
+      totalDistance: user.totalDistance || 0
+    };
+  }
+
+  async getLeaderboard(type: 'speed' | 'events' | 'alerts', limit: number): Promise<Array<{
+    userId: number;
+    username: string;
+    value: number;
+  }>> {
+    const users = Array.from(this.users.values());
+    
+    let sortedUsers;
+    switch (type) {
+      case 'speed':
+        sortedUsers = users
+          .filter(user => user.maxSpeed)
+          .sort((a, b) => (b.maxSpeed || 0) - (a.maxSpeed || 0))
+          .map(user => ({
+            userId: user.id,
+            username: user.username,
+            value: user.maxSpeed || 0
+          }));
+        break;
+      case 'events':
+        const eventCounts = new Map<number, number>();
+        this.events.forEach(event => {
+          const count = eventCounts.get(event.createdBy) || 0;
+          eventCounts.set(event.createdBy, count + 1);
+        });
+        sortedUsers = users
+          .map(user => ({
+            userId: user.id,
+            username: user.username,
+            value: eventCounts.get(user.id) || 0
+          }))
+          .filter(entry => entry.value > 0)
+          .sort((a, b) => b.value - a.value);
+        break;
+      case 'alerts':
+        const alertCounts = new Map<number, number>();
+        this.alerts.forEach(alert => {
+          const count = alertCounts.get(alert.userId) || 0;
+          alertCounts.set(alert.userId, count + 1);
+        });
+        sortedUsers = users
+          .map(user => ({
+            userId: user.id,
+            username: user.username,
+            value: alertCounts.get(user.id) || 0
+          }))
+          .filter(entry => entry.value > 0)
+          .sort((a, b) => b.value - a.value);
+        break;
+      default:
+        sortedUsers = [];
+    }
+    
+    return sortedUsers.slice(0, limit);
+  }
+
   // Alerts
   async createAlert(insertAlert: InsertAlert): Promise<Alert> {
     const id = this.currentAlertId++;
