@@ -1,0 +1,86 @@
+It almost always comes down to one of two things:
+	1.	Your Mapbox token isn’t actually being sent to the JS SDK
+	2.	Your token is restricted so it won’t work on your dev URL
+	3.	Your map container has zero height, so the map never renders
+
+Let’s walk through each check:
+
+⸻
+
+1. Verify that you’re actually passing your Mapbox token
+
+In your client-side JS (before you call new mapboxgl.Map()), you need:
+
+import mapboxgl from 'mapbox-gl';
+
+// ✔️ Make sure this line is running and `process.env.MAPBOX_TOKEN` really contains your key
+mapboxgl.accessToken = process.env.MAPBOX_TOKEN || 'pk.YOUR_PUBLIC_TOKEN_GOES_HERE';
+
+const map = new mapboxgl.Map({
+  container: 'map',              // the id of your <div>
+  style: 'mapbox://styles/mapbox/streets-v11',
+  center: [-118.2437, 34.0522],  // your fallback coords
+  zoom: 13
+});
+
+	1.	Double-check that you’re loading your .env variables into the browser bundle (e.g. with Vite you need to prefix them VITE_, and reference as import.meta.env.VITE_MAPBOX_TOKEN).
+	2.	In your built page, open DevTools → Network tab → filter on tiles or mapbox.com requests. Are your tile requests going out? Do they show a 401 unauthorized?
+
+⸻
+
+2. Check your token restrictions in Mapbox Studio
+
+In the Mapbox console when you created your token:
+	1.	Under Token restrictions → URL restrictions, you must list exactly the origins where the token will be used. For example, if your dev URL is:
+
+https://a88e37eb.spock.prod.repl.run
+https://d-invite-link-name.spock.replit.dev
+
+then add those two origins (including protocol). You can also use wildcards—e.g.:
+
+https://*.spock.prod.repl.run
+https://*.replit.dev
+
+
+	2.	Make sure Styles:Tiles and Styles:Read are checked under Public scopes (that covers map rendering). You don’t need any secret scopes for a public web map.
+
+If your token has no restrictions, it will work from any origin, which is a good way to rule out the restriction problem while you debug.
+
+⸻
+
+3. Ensure your map container actually has height
+
+A very common “invisible map” gotcha is forgetting to size your <div id="map">. If its height is 0 the map is there but you can’t see it.
+
+In your CSS:
+
+html, body, #map {
+  margin: 0; padding: 0;
+  height: 100%;
+  width: 100%;
+}
+#map {
+  position: relative;  /* or absolute/top-left-bottom-right if you prefer */
+}
+
+Then in your JSX/HTML:
+
+<div id="map"></div>
+
+Make sure this lives in the page before you call new mapboxgl.Map({ container: 'map' }).
+
+⸻
+
+Quick Debug Checklist
+	1.	DevTools → Network
+	•	Do you see requests to api.mapbox.com or tiles.mapbox.com?
+	•	Any 401 or 403 errors?
+	2.	Console
+	•	Any mapboxgl: Access token is required or Error: Unauthorized messages?
+	3.	Token
+	•	Temporarily remove all URL restrictions in Mapbox Studio.
+	•	Replace your env var with the raw token in the code to eliminate bundler issues.
+	4.	Container sizing
+	•	Give your map div an explicit min-height (e.g. min-height: 300px) just to verify it’s showing up.
+
+Once you confirm your token is valid + unrestricted, and your container is sized, your map tiles will load properly. Let me know which one of these you discover (or if you still see “Loading GPS Map…” with no network calls), and we’ll drill in further!
