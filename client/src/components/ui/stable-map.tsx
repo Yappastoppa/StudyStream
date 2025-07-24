@@ -49,8 +49,24 @@ export function StableMap(props: StableMapProps) {
       tokenLength: mapboxToken?.length,
       tokenPrefix: mapboxToken?.substring(0, 10) + '...',
       isValidFormat: hasMapboxToken,
-      envKeys: Object.keys(import.meta.env).filter(k => k.includes('MAPBOX'))
+      envKeys: Object.keys(import.meta.env).filter(k => k.includes('MAPBOX')),
+      currentURL: window.location.origin,
+      userAgent: navigator.userAgent.substring(0, 50)
     });
+    
+    // Test token validity with a simple API call
+    if (hasMapboxToken) {
+      fetch(`https://api.mapbox.com/styles/v1/mapbox/standard?access_token=${mapboxToken}`)
+        .then(response => {
+          console.log('🔑 Token validation:', response.status === 200 ? 'VALID' : 'INVALID');
+          if (!response.ok) {
+            console.error('Token response:', response.status, response.statusText);
+          }
+        })
+        .catch(error => {
+          console.error('❌ Token validation failed:', error);
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -74,10 +90,33 @@ export function StableMap(props: StableMapProps) {
         mapboxgl.default.accessToken = mapboxToken;
         console.log('✅ Mapbox token set');
 
-        // Create map instance
+        // Create map instance with Standard style and racing config
         map.current = new mapboxgl.default.Map({
           container: mapContainer.current!,
-          style: 'mapbox://styles/mapbox/dark-v11',
+          style: {
+            version: 8,
+            sources: {},
+            layers: [],
+            imports: [
+              {
+                id: "basemap",
+                url: "mapbox://styles/mapbox/standard",
+                config: {
+                  lightPreset: "night",
+                  theme: "monochrome",
+                  showPlaceLabels: true,
+                  showPointofInterestLabels: false,
+                  showRoadLabels: true,
+                  showPedestrianRoads: false,
+                  show3dObjects: true,
+                  font: "Open Sans Bold",
+                  colorMotorways: "#ef4444",
+                  colorTrunks: "#3b82f6", 
+                  colorRoads: "#6b7280"
+                }
+              }
+            ]
+          },
           center: center,
           zoom: zoom,
           attributionControl: false
@@ -88,6 +127,21 @@ export function StableMap(props: StableMapProps) {
         // Add event listeners
         map.current.on('load', () => {
           console.log('✅ Map loaded successfully');
+          
+          // Apply racing theme configuration at runtime
+          try {
+            map.current.setConfigProperty('basemap', 'lightPreset', 'night');
+            map.current.setConfigProperty('basemap', 'theme', 'monochrome');
+            map.current.setConfigProperty('basemap', 'showPointofInterestLabels', false);
+            map.current.setConfigProperty('basemap', 'showPedestrianRoads', false);
+            map.current.setConfigProperty('basemap', 'colorMotorways', '#ef4444');
+            map.current.setConfigProperty('basemap', 'colorTrunks', '#3b82f6');
+            map.current.setConfigProperty('basemap', 'colorRoads', '#6b7280');
+            console.log('✅ Racing theme applied');
+          } catch (configError) {
+            console.warn('Style configuration warning:', configError);
+          }
+          
           setIsMapLoaded(true);
           setMapError(null);
         });
