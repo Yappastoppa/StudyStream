@@ -39,7 +39,17 @@ export function StableMap(props: StableMapProps) {
   const [mapError, setMapError] = useState<string | null>(null);
 
   // Check if we have a valid Mapbox token
-  const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN?.startsWith('pk.'));
+  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+  const hasMapboxToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.'));
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('Mapbox token check:', {
+      hasToken: !!mapboxToken,
+      tokenPrefix: mapboxToken?.substring(0, 3),
+      hasValidToken: hasMapboxToken
+    });
+  }, []);
 
   useEffect(() => {
     if (!hasMapboxToken) {
@@ -55,7 +65,10 @@ export function StableMap(props: StableMapProps) {
         const mapboxgl = await import('mapbox-gl');
         
         // Set access token
-        mapboxgl.default.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+        if (!mapboxToken) {
+          throw new Error('Mapbox token is required');
+        }
+        mapboxgl.default.accessToken = mapboxToken;
 
         // Create map instance
         map.current = new mapboxgl.default.Map({
@@ -74,7 +87,12 @@ export function StableMap(props: StableMapProps) {
 
         map.current.on('error', (e: any) => {
           console.error('Mapbox error:', e);
-          setMapError('Failed to load map');
+          console.error('Error details:', {
+            type: e.error?.type,
+            status: e.error?.status,
+            message: e.error?.message
+          });
+          setMapError(`Map error: ${e.error?.message || 'Unknown error'}`);
           setIsMapLoaded(true);
         });
 
@@ -295,7 +313,16 @@ export function StableMap(props: StableMapProps) {
     <div className={`relative ${className}`}>
       {hasMapboxToken && !mapError ? (
         <>
-          <div ref={mapContainer} className="w-full h-full" style={{ minHeight: '400px' }} />
+          <div 
+            ref={mapContainer} 
+            className="w-full h-full" 
+            style={{ 
+              minHeight: '400px',
+              height: '100%',
+              width: '100%',
+              position: 'relative'
+            }} 
+          />
           {isMapLoaded && (
             <div className="absolute top-4 left-4 bg-racing-charcoal/90 backdrop-blur-sm rounded-lg p-2">
               <div className="flex items-center space-x-2">
