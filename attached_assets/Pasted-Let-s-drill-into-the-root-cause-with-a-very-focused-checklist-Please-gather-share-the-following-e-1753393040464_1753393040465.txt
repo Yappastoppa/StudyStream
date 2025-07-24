@@ -1,0 +1,79 @@
+Let’s drill into the root cause with a very focused checklist. Please gather & share the following exact details so we can pinpoint what’s failing:
+
+⸻
+
+1. Map Init Code
+
+Copy-and-paste the lines where you do:
+
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
+const map = new mapboxgl.Map({
+  container: '…',
+  style: '…',
+  center: […],
+  zoom: …,
+});
+
+I need to see the exact code, including how you read the env var and what you set as style:.
+
+⸻
+
+2. Container Markup & CSS
+
+Paste the JSX/HTML for your <div id="…"> and the CSS rules for that ID.
+E.g.
+
+<div id="map" style="…"></div>
+
+and
+
+#map { width:100%; height:100vh; }
+
+This confirms your container actually has size.
+
+⸻
+
+3. Environment Loading
+
+Tell me how you’re loading .env.local. For Vite it must be:
+	•	File named .env.local at project root
+	•	Variable VITE_MAPBOX_TOKEN=pk.xxx
+	•	You must restart the dev server after creating it
+
+⸻
+
+4. DevTools Logs
+
+Open your browser’s console & network tab, then reload:
+	1.	Console errors/warnings (especially “Invalid access token” or “container not found”).
+	2.	Network requests to api.mapbox.com or tiles.mapbox.com:
+	•	Do they show 200 or 401/403?
+	•	Any CORS failures?
+
+Copy the first few lines of each.
+
+⸻
+
+5. Minimal Repro Case
+
+Create a single test.html in your project root:
+
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet"/>
+  <style>#map{position:absolute;top:0;bottom:0;width:100%;}</style>
+</head><body>
+  <div id="map"></div>
+  <script>
+    mapboxgl.accessToken = 'pk.YOUR_TOKEN';
+    new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center:[0,0], zoom:1 });
+  </script>
+</body></html>
+
+Run that in your browser—does it render? If yes, the problem is in your build setup; if no, it’s your token or style.
+
+⸻
+
+Please share all of the above and we’ll zero in on exactly what’s mis-configured.
