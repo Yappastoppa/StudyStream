@@ -38,21 +38,25 @@ export function StableMap(props: StableMapProps) {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
-  // Check if we have a valid Mapbox token
+  // Enhanced token validation
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-  const hasMapboxToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.'));
+  const hasMapboxToken = Boolean(mapboxToken && mapboxToken.startsWith('pk.') && mapboxToken.length > 50);
   
   // Debug logging
   useEffect(() => {
-    console.log('Mapbox token check:', {
+    console.log('🗺️ Mapbox Debug Info:', {
       hasToken: !!mapboxToken,
-      tokenPrefix: mapboxToken?.substring(0, 3),
-      hasValidToken: hasMapboxToken
+      tokenLength: mapboxToken?.length,
+      tokenPrefix: mapboxToken?.substring(0, 10) + '...',
+      isValidFormat: hasMapboxToken,
+      envKeys: Object.keys(import.meta.env).filter(k => k.includes('MAPBOX'))
     });
   }, []);
 
   useEffect(() => {
     if (!hasMapboxToken) {
+      console.warn('❌ Invalid or missing Mapbox token');
+      setMapError('Mapbox token required');
       setIsMapLoaded(true);
       return;
     }
@@ -61,14 +65,14 @@ export function StableMap(props: StableMapProps) {
 
     const initializeMap = async () => {
       try {
+        console.log('🚀 Initializing Mapbox map...');
+        
         // Dynamic import of Mapbox
         const mapboxgl = await import('mapbox-gl');
         
         // Set access token
-        if (!mapboxToken) {
-          throw new Error('Mapbox token is required');
-        }
         mapboxgl.default.accessToken = mapboxToken;
+        console.log('✅ Mapbox token set');
 
         // Create map instance
         map.current = new mapboxgl.default.Map({
@@ -79,25 +83,34 @@ export function StableMap(props: StableMapProps) {
           attributionControl: false
         });
 
+        console.log('✅ Map instance created');
+
         // Add event listeners
         map.current.on('load', () => {
+          console.log('✅ Map loaded successfully');
           setIsMapLoaded(true);
           setMapError(null);
         });
 
         map.current.on('error', (e: any) => {
-          console.error('Mapbox error:', e);
+          console.error('❌ Mapbox error:', e);
+          const errorMsg = e.error?.message || e.message || 'Unknown map error';
           console.error('Error details:', {
             type: e.error?.type,
             status: e.error?.status,
-            message: e.error?.message
+            message: errorMsg
           });
-          setMapError(`Map error: ${e.error?.message || 'Unknown error'}`);
+          setMapError(`Map error: ${errorMsg}`);
           setIsMapLoaded(true);
+        });
+
+        map.current.on('styledata', () => {
+          console.log('✅ Map style loaded');
         });
 
         if (onMapClick) {
           map.current.on('click', (e: any) => {
+            console.log('🖱️ Map clicked:', e.lngLat);
             onMapClick(e.lngLat.lng, e.lngLat.lat);
           });
         }
@@ -106,8 +119,8 @@ export function StableMap(props: StableMapProps) {
         map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
 
       } catch (error) {
-        console.error('Failed to initialize Mapbox:', error);
-        setMapError('Failed to initialize map');
+        console.error('❌ Failed to initialize Mapbox:', error);
+        setMapError(`Initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setIsMapLoaded(true);
       }
     };
@@ -117,12 +130,16 @@ export function StableMap(props: StableMapProps) {
     // Cleanup
     return () => {
       if (map.current) {
-        map.current.remove();
+        try {
+          map.current.remove();
+        } catch (e) {
+          console.warn('Cleanup warning:', e);
+        }
         map.current = null;
       }
       markersRef.current.clear();
     };
-  }, [center, zoom, onMapClick, hasMapboxToken]);
+  }, [center, zoom, onMapClick, hasMapboxToken, mapboxToken]);
 
   // Update markers when data changes
   useEffect(() => {
@@ -133,7 +150,13 @@ export function StableMap(props: StableMapProps) {
         const mapboxgl = await import('mapbox-gl');
 
         // Clear existing markers
-        markersRef.current.forEach(marker => marker.remove());
+        markersRef.current.forEach(marker => {
+          try {
+            marker.remove();
+          } catch (e) {
+            console.warn('Marker cleanup warning:', e);
+          }
+        });
         markersRef.current.clear();
 
         // Add user markers
@@ -201,15 +224,17 @@ export function StableMap(props: StableMapProps) {
           markersRef.current.set(`alert-${alert.id}`, marker);
         });
 
+        console.log(`✅ Updated ${userLocations.length} users, ${alerts.length} alerts`);
+
       } catch (error) {
-        console.error('Failed to update markers:', error);
+        console.error('❌ Failed to update markers:', error);
       }
     };
 
     updateMarkers();
   }, [userLocations, alerts, isMapLoaded, mapError]);
 
-  // Racing-themed fallback interface
+  // Enhanced Racing-themed fallback interface
   const RacingInterface = () => (
     <div className="w-full h-full bg-gradient-to-br from-racing-dark via-racing-charcoal to-racing-dark relative">
       {/* Grid overlay */}
@@ -232,6 +257,16 @@ export function StableMap(props: StableMapProps) {
           <div className="w-2 h-2 bg-racing-blue rounded-full animate-pulse"></div>
         </div>
       </div>
+
+      {/* Error message */}
+      {mapError && (
+        <div className="absolute top-4 right-4 bg-red-900/90 border border-red-500 rounded-lg p-3 max-w-sm">
+          <div className="text-red-200 text-sm">
+            <strong>Map Error:</strong><br />
+            {mapError}
+          </div>
+        </div>
+      )}
 
       {/* User locations */}
       {userLocations.map((user, index) => (
@@ -286,16 +321,16 @@ export function StableMap(props: StableMapProps) {
       {/* Status indicator */}
       <div className="absolute top-4 left-4 bg-racing-charcoal/90 rounded-lg p-2">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
-          <span className="text-racing-green text-sm">
-            {hasMapboxToken ? 'GPS READY' : 'SIMULATION MODE'}
+          <div className={`w-2 h-2 rounded-full animate-pulse ${hasMapboxToken ? 'bg-racing-red' : 'bg-racing-yellow'}`}></div>
+          <span className={`text-sm ${hasMapboxToken ? 'text-racing-red' : 'text-racing-yellow'}`}>
+            {hasMapboxToken ? 'GPS ERROR' : 'SIMULATION MODE'}
           </span>
         </div>
       </div>
     </div>
   );
 
-  // Show loading state
+  // Show enhanced loading state
   if (!isMapLoaded && hasMapboxToken && !mapError) {
     return (
       <div className={`relative ${className} bg-racing-dark`}>
@@ -303,6 +338,7 @@ export function StableMap(props: StableMapProps) {
           <div className="text-center text-white">
             <div className="w-8 h-8 border-2 border-racing-blue border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-sm">Loading GPS Map...</p>
+            <p className="text-xs text-racing-gray mt-1">Connecting to Mapbox...</p>
           </div>
         </div>
       </div>
