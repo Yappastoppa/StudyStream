@@ -9,29 +9,21 @@ import MapPage from "@/pages/dashboard/map";
 import NotFound from "@/pages/not-found";
 
 function App() {
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-
-  const handleLoginSuccess = (code: string) => {
-    setInviteCode(code);
-  };
-
+  // Bypass authentication for now - go straight to racing dashboard
   const handleLogout = () => {
-    setInviteCode(null);
+    console.log("Logout clicked");
   };
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        {!inviteCode ? (
-          <LoginPage onLoginSuccess={handleLoginSuccess} />
-        ) : (
-          <Switch>
-            <Route path="/" component={() => <MapPage inviteCode={inviteCode} onLogout={handleLogout} />} />
-            <Route path="/map" component={() => <MapPage inviteCode={inviteCode} onLogout={handleLogout} />} />
-            <Route component={NotFound} />
-          </Switch>
-        )}
+        <Switch>
+          <Route path="/" component={() => <MapPage inviteCode="ADMIN2025" onLogout={handleLogout} />} />
+          <Route path="/map" component={() => <MapPage inviteCode="ADMIN2025" onLogout={handleLogout} />} />
+          <Route path="/login" component={() => <LoginPage onLoginSuccess={() => {}} />} />
+          <Route component={NotFound} />
+        </Switch>
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -31,16 +31,16 @@ interface MapProps {
 }
 
 export function Map(props: MapProps) {
-  const center = props.center || [-74.006, 40.7128];
-  const zoom = props.zoom || 13;
-  const onMapClick = props.onMapClick;
-  const userLocations = props.userLocations || [];
-  const alerts = props.alerts || [];
-  const className = props.className || "";
+  const center = props?.center || [-74.006, 40.7128];
+  const zoom = props?.zoom || 13;
+  const onMapClick = props?.onMapClick;
+  const userLocations = props?.userLocations || [];
+  const alerts = props?.alerts || [];
+  const className = props?.className || "";
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const userMarkers = useRef<Map<number, mapboxgl.Marker>>(new Map<number, mapboxgl.Marker>());
-  const alertMarkers = useRef<Map<number, mapboxgl.Marker>>(new Map<number, mapboxgl.Marker>());
+  const userMarkers = useRef(new Map<number, mapboxgl.Marker>());
+  const alertMarkers = useRef(new Map<number, mapboxgl.Marker>());
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   // Initialize map
