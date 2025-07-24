@@ -216,10 +216,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { inviteCode, username } = schema.parse(req.body);
       
-      // Check if invite code is valid
+      // Check if invite code is valid (allow admin code to be reused)
       const invite = await storage.getInviteCode(inviteCode);
-      if (!invite || invite.isUsed || invite.expiresAt < new Date()) {
+      if (!invite || invite.expiresAt < new Date()) {
         return res.status(400).json({ message: 'Invalid or expired invite code' });
+      }
+      
+      // Only check if used for non-admin codes
+      if (inviteCode !== "ADMIN2025" && invite.isUsed) {
+        return res.status(400).json({ message: 'Invite code already used' });
       }
       
       // Generate anonymous username if not provided
@@ -231,10 +236,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Username already taken' });
       }
       
-      // Use the invite code
-      const codeUsed = await storage.useInviteCode(inviteCode);
-      if (!codeUsed) {
-        return res.status(400).json({ message: 'Failed to use invite code' });
+      // Use the invite code (skip for admin code)
+      if (inviteCode !== "ADMIN2025") {
+        const codeUsed = await storage.useInviteCode(inviteCode);
+        if (!codeUsed) {
+          return res.status(400).json({ message: 'Failed to use invite code' });
+        }
       }
       
       // Create user

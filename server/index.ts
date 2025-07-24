@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -36,7 +37,37 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize permanent admin invite code
+async function initializeAdminCode() {
+  try {
+    const adminCode = "ADMIN2025";
+    const existingCode = await storage.getInviteCode(adminCode);
+    
+    if (!existingCode) {
+      // Create permanent admin code that expires far in the future and can be reused
+      const farFuture = new Date();
+      farFuture.setFullYear(farFuture.getFullYear() + 100); // 100 years from now
+      
+      await storage.createInviteCode({
+        code: adminCode,
+        expiresAt: farFuture,
+        createdBy: null,
+        isUsed: false
+      });
+      
+      log(`✅ Admin invite code created: ${adminCode}`);
+    } else {
+      log(`✅ Admin invite code ready: ${adminCode}`);
+    }
+  } catch (error) {
+    log(`❌ Failed to create admin code: ${error}`);
+  }
+}
+
 (async () => {
+  // Initialize admin code first
+  await initializeAdminCode();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
