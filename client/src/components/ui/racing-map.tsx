@@ -14,11 +14,17 @@ import {
   Route,
   MapPin,
   Layers,
-  Trophy
+  Trophy,
+  Pencil,
+  Activity
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
 import { AIRoutes } from '@/components/racing/ai-routes';
+import { RouteCreator } from '@/components/racing/route-creator';
+import { SimulationMode } from '@/components/racing/simulation-mode';
+import { RouteHeatmap } from '@/components/racing/route-heatmap';
+import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -54,6 +60,10 @@ export function RacingMap({
   const [navigationRoute, setNavigationRoute] = useState<any>(null);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showAIRoutes, setShowAIRoutes] = useState(false);
+  const [showRouteCreator, setShowRouteCreator] = useState(false);
+  const [showSimulation, setShowSimulation] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -659,6 +669,33 @@ export function RacingMap({
                 className={`h-10 w-10 hover:bg-racing-blue/20 ${showAIRoutes ? 'bg-racing-orange/30 text-racing-orange' : 'text-white/70'}`}
                 title="AI Race Routes"
               >
+                <Route className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowRouteCreator(!showRouteCreator)}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showRouteCreator ? 'bg-racing-green/30 text-racing-green' : 'text-white/70'}`}
+                title="Create Route"
+              >
+                <Pencil className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowHeatmap(!showHeatmap)}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showHeatmap ? 'bg-racing-red/30 text-racing-red' : 'text-white/70'}`}
+                title="Activity Heatmap"
+              >
+                <Activity className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowLeaderboard(!showLeaderboard)}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showLeaderboard ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70'}`}
+                title="Route Leaderboard"
+              >
                 <Trophy className="h-5 w-5" />
               </Button>
             </div>
@@ -764,6 +801,33 @@ export function RacingMap({
           onRouteSelect={(route) => {
             console.log('Selected route:', route);
           }}
+        />
+      )}
+      
+      {/* Route Creator */}
+      <RouteCreator 
+        map={map.current}
+        isActive={showRouteCreator}
+        onClose={() => setShowRouteCreator(false)}
+      />
+      
+      {/* Simulation Mode */}
+      <SimulationMode 
+        map={map.current}
+        isActive={showSimulation}
+        onToggle={() => setShowSimulation(!showSimulation)}
+      />
+      
+      {/* Route Heatmap */}
+      <RouteHeatmap 
+        map={map.current}
+        isActive={showHeatmap}
+      />
+      
+      {/* Route Leaderboard */}
+      {showLeaderboard && (
+        <RouteLeaderboard 
+          onClose={() => setShowLeaderboard(false)}
         />
       )}
     </div>

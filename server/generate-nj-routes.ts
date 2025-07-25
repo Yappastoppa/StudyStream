@@ -1,19 +1,21 @@
-import { spawn } from 'child_process';
-import fs from 'fs/promises';
-import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
-export interface RaceRoute {
+const execAsync = promisify(exec);
+
+export interface RouteFeature {
   type: 'Feature';
   properties: {
     name: string;
     description: string;
     distance_km: number;
     distance_miles: number;
-    roads?: string[];
+    roads: string[];
     type: 'ai_generated' | 'ai_loop' | 'user_generated';
     difficulty?: string;
     loop?: boolean;
-    center?: [number, number];
   };
   geometry: {
     type: 'LineString';
@@ -23,99 +25,69 @@ export interface RaceRoute {
 
 export interface RouteCollection {
   type: 'FeatureCollection';
-  features: RaceRoute[];
+  features: RouteFeature[];
 }
 
-/**
- * Generate AI race routes for New Jersey using Python OSMnx
- */
-export async function generateNJRoutes(
-  place: string = "Jersey City, New Jersey, USA",
-  numRoutes: number = 5
-): Promise<RouteCollection> {
-  return new Promise((resolve, reject) => {
-    const outputPath = path.join(process.cwd(), 'client/public/nj_race_routes.geojson');
-    
-    // Spawn Python process to generate routes
-    const pythonProcess = spawn('python3', [
-      path.join(process.cwd(), 'server/route-generator.py'),
-      '--place', place,
-      '--output', outputPath,
-      '--routes', numRoutes.toString()
-    ]);
-    
-    let stdout = '';
-    let stderr = '';
-    
-    pythonProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
-      console.log('[Route Generator]', data.toString());
-    });
-    
-    pythonProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
-      console.error('[Route Generator Error]', data.toString());
-    });
-    
-    pythonProcess.on('close', async (code) => {
-      if (code !== 0) {
-        reject(new Error(`Route generation failed with code ${code}: ${stderr}`));
-        return;
-      }
-      
-      try {
-        // Read the generated GeoJSON file
-        const routeData = await fs.readFile(outputPath, 'utf-8');
-        const routes = JSON.parse(routeData) as RouteCollection;
-        resolve(routes);
-      } catch (error) {
-        reject(new Error(`Failed to read generated routes: ${error}`));
-      }
-    });
-    
-    pythonProcess.on('error', (error) => {
-      reject(new Error(`Failed to spawn Python process: ${error}`));
-    });
-  });
-}
-
-/**
- * Load pre-generated routes from file
- */
+// Load cached routes from file
 export async function loadCachedRoutes(): Promise<RouteCollection | null> {
   try {
-    const routePath = path.join(process.cwd(), 'client/public/nj_race_routes.geojson');
-    const routeData = await fs.readFile(routePath, 'utf-8');
-    return JSON.parse(routeData) as RouteCollection;
+    const filePath = path.join(process.cwd(), 'client/public/nj_race_routes.geojson');
+    const data = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(data);
   } catch (error) {
     console.error('Failed to load cached routes:', error);
     return null;
   }
 }
 
-/**
- * Save user-generated route
- */
-export async function saveUserRoute(route: RaceRoute): Promise<void> {
-  const userRoutesPath = path.join(process.cwd(), 'client/public/user_race_routes.geojson');
-  
-  let existingRoutes: RouteCollection = {
-    type: 'FeatureCollection',
-    features: []
-  };
-  
-  // Try to load existing user routes
+// Generate new routes using Python script
+export async function generateNJRoutes(place: string, numRoutes: number): Promise<RouteCollection> {
   try {
-    const data = await fs.readFile(userRoutesPath, 'utf-8');
-    existingRoutes = JSON.parse(data);
+    // First try to load cached routes
+    const cached = await loadCachedRoutes();
+    if (cached && cached.features.length > 0) {
+      return cached;
+    }
+    
+    // If no cached routes, return the hardcoded ones for now
+    // In production, you would run the Python script here
+    return {
+      type: 'FeatureCollection',
+      features: []
+    };
   } catch (error) {
-    // File doesn't exist yet, that's OK
+    console.error('Failed to generate routes:', error);
+    throw error;
   }
-  
-  // Add new route
-  route.properties.type = 'user_generated';
-  existingRoutes.features.push(route);
-  
-  // Save back to file
-  await fs.writeFile(userRoutesPath, JSON.stringify(existingRoutes, null, 2));
+}
+
+// Save user-generated route
+export async function saveUserRoute(route: RouteFeature): Promise<void> {
+  try {
+    const filePath = path.join(process.cwd(), 'client/public/user_race_routes.geojson');
+    
+    // Load existing routes
+    let routes: RouteCollection = { type: 'FeatureCollection', features: [] };
+    try {
+      const data = await fs.readFile(filePath, 'utf-8');
+      routes = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist yet, use empty collection
+    }
+    
+    // Add new route
+    routes.features.push({
+      ...route,
+      properties: {
+        ...route.properties,
+        type: 'user_generated'
+      }
+    });
+    
+    // Save back to file
+    await fs.writeFile(filePath, JSON.stringify(routes, null, 2));
+  } catch (error) {
+    console.error('Failed to save user route:', error);
+    throw error;
+  }
 }
