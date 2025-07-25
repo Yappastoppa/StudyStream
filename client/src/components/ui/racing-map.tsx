@@ -180,7 +180,7 @@ export function RacingMap({
           const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
           
           if (isDrawingRoute) {
-            setCurrentRoute(prev => [...prev, coords]);
+            setDrawingRoute((prev: any[]) => [...prev, coords]);
             addRoutePoint(coords);
           } else if (navigationMode) {
             // Navigation mode: set start and end points
@@ -380,7 +380,7 @@ export function RacingMap({
         properties: {},
         geometry: {
           type: 'LineString',
-          coordinates: currentRoute.concat([coords])
+          coordinates: drawingRoute.concat([coords])
         }
       }]
     };
@@ -1181,7 +1181,7 @@ export function RacingMap({
       {/* Alternative Routes Modal */}
       <AlternativeRoutes
         isVisible={showAlternatives}
-        routes={alternativeRoutes}
+        routes={alternativeRoutes as any[]}
         origin="Current Location"
         destination="Destination"
         onRouteSelect={(route) => {
@@ -1227,7 +1227,7 @@ export function RacingMap({
         <div className="fixed top-4 right-4 z-30">
           <VoiceNavigation
             isEnabled={voiceEnabled}
-            currentStep={currentStep}
+            currentStep={currentStep || undefined}
             remainingDistance={remainingDistance}
             currentSpeed={currentSpeed}
             onToggle={setVoiceEnabled}
@@ -1238,7 +1238,7 @@ export function RacingMap({
       {/* Lane Guidance Display */}
       {isNavigating && currentStep && (
         <LaneGuidanceDisplay
-          laneData={extractLaneGuidance(currentStep)}
+          laneData={extractLaneGuidance(currentStep) || undefined}
           isVisible={isNavigating}
           upcomingManeuver={currentStep.maneuver}
           distanceToManeuver={remainingDistance}

@@ -25,6 +25,26 @@ export function useWebSocket({
   const [isConnected, setIsConnected] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Use refs to store callbacks to prevent reconnection loops
+  const callbacksRef = useRef({
+    onUserLocationUpdate,
+    onNewAlert,
+    onEventInvitation,
+    onUserConnected,
+    onUserDisconnected
+  });
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    callbacksRef.current = {
+      onUserLocationUpdate,
+      onNewAlert,
+      onEventInvitation,
+      onUserConnected,
+      onUserDisconnected
+    };
+  });
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return;
@@ -51,19 +71,19 @@ export function useWebSocket({
             console.error('Auth error:', data.message);
             break;
           case 'user_location_update':
-            onUserLocationUpdate?.(data);
+            callbacksRef.current.onUserLocationUpdate?.(data);
             break;
           case 'new_alert':
-            onNewAlert?.(data);
+            callbacksRef.current.onNewAlert?.(data);
             break;
           case 'event_invitation':
-            onEventInvitation?.(data);
+            callbacksRef.current.onEventInvitation?.(data);
             break;
           case 'user_connected':
-            onUserConnected?.(data);
+            callbacksRef.current.onUserConnected?.(data);
             break;
           case 'user_disconnected':
-            onUserDisconnected?.(data);
+            callbacksRef.current.onUserDisconnected?.(data);
             break;
           case 'nearby_users':
             // Handle nearby users response
@@ -83,14 +103,16 @@ export function useWebSocket({
       
       // Attempt to reconnect after 3 seconds
       reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
+        if (ws.current?.readyState !== WebSocket.OPEN) {
+          connect();
+        }
       }, 3000);
     };
 
     ws.current.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-  }, [onUserLocationUpdate, onNewAlert, onEventInvitation, onUserConnected, onUserDisconnected]);
+  }, []); // Remove dependencies to prevent reconnection loops
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -160,7 +182,7 @@ export function useWebSocket({
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, []); // Remove dependencies to prevent reconnection loops
 
   return {
     isConnected,
