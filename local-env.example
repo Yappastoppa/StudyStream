@@ -1,0 +1,17 @@
+# Copy this file to .env.local and update with your values
+
+# Mapbox Configuration (REQUIRED)
+VITE_MAPBOX_TOKEN=pk.your_actual_mapbox_token_here
+
+# Development Configuration
+PORT=5000
+NODE_ENV=development
+
+# Database (Optional - app works without database for basic testing)
+# DATABASE_URL=postgresql://username:password@localhost:5432/ghostracer
+
+# Get your Mapbox token from: https://account.mapbox.com/access-tokens/
+# Make sure the token has these scopes:
+# - styles:read
+# - styles:tiles  
+# - fonts:read
