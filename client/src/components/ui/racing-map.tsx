@@ -148,6 +148,11 @@ export function RacingMap({
     
     const initMap = async () => {
       try {
+        if (!MAPBOX_TOKEN) {
+          console.error('Mapbox token is missing');
+          return;
+        }
+
         const mapboxgl = await import('mapbox-gl');
         mapboxgl.default.accessToken = MAPBOX_TOKEN;
         
@@ -193,10 +198,17 @@ export function RacingMap({
         
       } catch (error) {
         console.error('Failed to initialize racing map:', error);
+        // Show fallback UI instead of crashing
+        setIsMapLoaded(false);
       }
     };
     
-    setTimeout(initMap, 100);
+    // Add a longer timeout to ensure DOM is ready
+    const timeoutId = setTimeout(initMap, 200);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
     
     return () => {
       if (map.current) {
@@ -678,7 +690,17 @@ export function RacingMap({
           ref={mapContainer} 
           className="w-full h-full absolute inset-0" 
           style={{ minHeight: '100vh' }}
-        />
+        >
+          {/* Fallback loading state */}
+          {!isMapLoaded && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-racing-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-white/70">Loading map...</p>
+              </div>
+            </div>
+          )}
+        </div>
       
 
       

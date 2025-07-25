@@ -128,6 +128,11 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     }
   ): Promise<NavigationRoute | null> => {
     try {
+      if (!mapboxToken) {
+        console.error('Mapbox token is missing');
+        return null;
+      }
+
       const profile = options.profile;
       const coordinates = `${start[0]},${start[1]};${end[0]},${end[1]}`;
 
@@ -147,6 +152,11 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       url += `&access_token=${mapboxToken}`;
 
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
