@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,7 @@ interface LocationPermissionModalProps {
 
 export function LocationPermissionModal({ isOpen, onPermissionGranted }: LocationPermissionModalProps) {
   const [error, setError] = useState<string>('');
-  
+
   const { 
     isLoading, 
     error: geoError, 
@@ -43,19 +42,39 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
   const handleRequestLocation = async () => {
     setError('');
     try {
-      const permission = await getCurrentPosition();
-      if (permission === 'granted' || permission === 'denied') {
-        // Either real GPS worked or simulation started - close modal
-        setTimeout(() => {
-          onPermissionGranted();
-        }, 1000);
-      }
-    } catch (error) {
-      console.error('Location request failed:', error);
-      // Still close modal and use simulation
-      setTimeout(() => {
-        onPermissionGranted();
-      }, 1000);
+      console.log('🔥 Requesting location permission for live pin creation...');
+
+      // Request location permission with shorter timeout for mobile/iframe
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('GPS timeout - will use simulation'));
+        }, 3000);
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            clearTimeout(timeoutId);
+            resolve(pos);
+          }, 
+          (err) => {
+            clearTimeout(timeoutId);
+            reject(err);
+          }, 
+          {
+            enableHighAccuracy: true,
+            timeout: 2500,
+            maximumAge: 60000
+          }
+        );
+      });
+
+      console.log('✅ Real GPS location granted - Live pin will be created:', position.coords.latitude, position.coords.longitude);
+    } catch (error: any) {
+      console.log('❌ GPS fallback to simulation mode:', error.message);
+    } finally {
+      setIsLoading(true);
+       // Success - close modal and notify parent
+      setIsLoading(false);
+      onPermissionGranted(); // Always proceed to show map with live pin
     }
   };
 
@@ -75,7 +94,7 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
             This navigation app needs your location to provide turn-by-turn directions. 
             Tap "Allow Location Access" and approve the permission when prompted.
           </p>
-          
+
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
             <p className="text-yellow-400 text-sm font-medium mb-1">📱 Important:</p>
             <p className="text-yellow-300 text-xs">
@@ -84,14 +103,14 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
               • For best results, open this app in Safari or Chrome (not Replit preview)
             </p>
           </div>
-          
+
           {error && (
             <div className="flex items-start space-x-2 p-3 bg-red-900/30 border border-red-500/50 rounded">
               <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
               <p className="text-red-200 text-sm">{error}</p>
             </div>
           )}
-          
+
           <Button
             onClick={handleRequestLocation}
             disabled={isLoading}
@@ -106,7 +125,7 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
               'Allow Location Access'
             )}
           </Button>
-          
+
           <p className="text-xs text-white/60 text-center">
             Your location data is processed locally and used only for navigation purposes.
           </p>
