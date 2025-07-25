@@ -24,7 +24,8 @@ interface FixedMapProps {
 }
 
 export function FixedMap(props: FixedMapProps) {
-  const center = props?.center || [-74.006, 40.7128];
+  // 🔥 FORCE NYC LOCATION FOR TESTING
+  const center = props?.center || [-74.006, 40.7128]; // NYC coordinates
   const zoom = props?.zoom || 13;
   const onMapClick = props?.onMapClick;
   const userLocations = props?.userLocations || [];
@@ -61,9 +62,12 @@ export function FixedMap(props: FixedMapProps) {
     let isComponentMounted = true;
 
     const initializeMap = async () => {
-      // If no valid token, show fallback immediately
-      if (!hasValidToken) {
-        console.warn('No valid Mapbox token found - using simulation mode');
+      // 🔥 TEMPORARILY BYPASS TOKEN CHECK TO TEST MAPBOX LOADING
+      console.log('🔥 FORCING MAPBOX LOAD TEST - bypassing token validation');
+      
+      // If no token at all, show fallback
+      if (!MAPBOX_TOKEN) {
+        console.warn('No Mapbox token found - using simulation mode');
         setShowFallback(true);
         setIsLoading(false);
         setIsMapLoaded(true);

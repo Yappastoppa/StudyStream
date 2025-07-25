@@ -159,12 +159,20 @@ export function useGeolocation({
   }, []);
 
   useEffect(() => {
-    if (watchPosition) {
-      startWatching();
-    } else {
-      getCurrentPosition();
-    }
-
+    // 🔥 BYPASS GPS FOR TESTING - FORCE NYC COORDINATES
+    console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
+    setTimeout(() => {
+      setState({
+        lat: 40.7128,
+        lng: -74.0060,
+        accuracy: 10,
+        speed: 0,
+        heading: null,
+        error: null,
+        isLoading: false
+      });
+    }, 1000); // Simulate 1 second GPS "acquisition"
+    
     return () => {
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
