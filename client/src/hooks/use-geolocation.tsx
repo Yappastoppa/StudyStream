@@ -115,8 +115,10 @@ export function useGeolocation({
         setHasTriedRealGPS(true);
         toast.success('Location found!', { id: 'location-loading' });
         
-        // Always start watching for continuous updates
-        startWatching();
+        // Start watching for updates if requested
+        if (watchPosition) {
+          startWatching();
+        }
       },
       (error) => {
         clearTimeout(permissionTimeout);
@@ -132,10 +134,10 @@ export function useGeolocation({
       },
       {
         ...options,
-        timeout: 15000 // Increase timeout for permission prompt
+        timeout: 10000 // Increase timeout for permission prompt
       }
     );
-  }, [updatePosition, handleError, options, startWatching]);
+  }, [updatePosition, handleError, options, watchPosition, state.isLoading]);
 
   const startSimulation = useCallback(() => {
     console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');

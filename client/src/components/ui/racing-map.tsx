@@ -20,11 +20,6 @@ interface RacingMapProps {
   onRouteSelect?: (route: any) => void;
   savedRoutes?: any[];
   onNavigationStart?: (start: [number, number], end: [number, number]) => void;
-  userLocation?: [number, number] | null;
-  userSpeed?: number | null;
-  userHeading?: number | null;
-  gpsAccuracy?: number | null;
-  isGPSActive?: boolean;
 }
 
 export function RacingMap({ 
@@ -33,12 +28,7 @@ export function RacingMap({
   className = "",
   onRouteSelect,
   savedRoutes = [],
-  onNavigationStart,
-  userLocation,
-  userSpeed,
-  userHeading,
-  gpsAccuracy,
-  isGPSActive
+  onNavigationStart
 }: RacingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -314,73 +304,61 @@ export function RacingMap({
   };
 
   // Update car marker position and rotation
-  const updateCarMarker = async (location: [number, number], heading: number = 0) => {
-    if (!map.current || !isMapLoaded) return;
+  const updateCarMarker = async (location: [number, number], heading: number) => {
+    if (!map.current) return;
 
     try {
       if (!userMarkerRef.current) {
-        // Create user marker element with pulsing effect
+        // Create car marker element
         const markerElement = document.createElement('div');
-        markerElement.className = 'user-location-marker';
-        markerElement.style.width = '20px';
-        markerElement.style.height = '20px';
-        markerElement.style.borderRadius = '50%';
-        markerElement.style.backgroundColor = '#00D4FF';
-        markerElement.style.border = '3px solid white';
-        markerElement.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.6)';
-        markerElement.style.position = 'relative';
-        markerElement.style.zIndex = '1000';
-
-        // Add pulsing animation
-        const pulseElement = document.createElement('div');
-        pulseElement.style.width = '40px';
-        pulseElement.style.height = '40px';
-        pulseElement.style.borderRadius = '50%';
-        pulseElement.style.backgroundColor = 'rgba(0, 212, 255, 0.3)';
-        pulseElement.style.position = 'absolute';
-        pulseElement.style.top = '-10px';
-        pulseElement.style.left = '-10px';
-        pulseElement.style.animation = 'pulse 2s infinite';
-        markerElement.appendChild(pulseElement);
+        markerElement.className = 'car-marker';
+        markerElement.style.width = '36px';
+        markerElement.style.height = '36px';
+        markerElement.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g filter="url(#filter0_d_1_1)">
+              <path d="M18 4L22 10H30L28 26H24L22 30H14L12 26H8L6 10H14L18 4Z" fill="#00D4FF" stroke="#0099CC" stroke-width="1"/>
+              <circle cx="12" cy="22" r="2" fill="#333"/>
+              <circle cx="24" cy="22" r="2" fill="#333"/>
+              <rect x="16" y="12" width="4" height="6" rx="1" fill="#004466"/>
+            </g>
+            <defs>
+              <filter id="filter0_d_1_1" x="0" y="0" width="36" height="36" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                <feOffset dy="2"/>
+                <feGaussianBlur stdDeviation="3"/>
+                <feComposite in2="hardAlpha" operator="out"/>
+                <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0.831373 0 0 0 0 1 0 0 0 0.3 0"/>
+                <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+              </filter>
+            </defs>
+          </svg>
+        `)}")`;
+        markerElement.style.backgroundSize = 'contain';
+        markerElement.style.backgroundRepeat = 'no-repeat';
+        markerElement.style.backgroundPosition = 'center';
 
         const mapboxgl = await import('mapbox-gl');
         userMarkerRef.current = new mapboxgl.default.Marker({
           element: markerElement,
           anchor: 'center'
         }).setLngLat(location).addTo(map.current);
-
-        console.log('✅ User location marker created at:', location);
       } else {
         // Update existing marker position
         userMarkerRef.current.setLngLat(location);
-        console.log('📍 User marker updated to:', location);
       }
 
-      // Update marker rotation based on heading if provided
+      // Update marker rotation based on heading
       if (userMarkerRef.current && heading > 0) {
         const markerElement = userMarkerRef.current.getElement();
         markerElement.style.transform = `rotate(${heading}deg)`;
       }
-
-      // Center map on user location when marker is first created
-      if (map.current && userMarkerRef.current) {
-        map.current.flyTo({
-          center: location,
-          zoom: 16,
-          duration: 1000
-        });
-      }
     } catch (error) {
-      console.error('Failed to update user marker:', error);
+      console.error('Failed to update car marker:', error);
     }
   };
-
-  // Update user marker when location changes
-  useEffect(() => {
-    if (userLocation && isMapLoaded) {
-      updateCarMarker(userLocation, userHeading || 0);
-    }
-  }, [userLocation, userHeading, isMapLoaded]);
 
   // Format distance with proper units
   const formatDistance = (distanceInMeters: number): string => {
