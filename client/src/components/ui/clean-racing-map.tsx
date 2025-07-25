@@ -298,60 +298,132 @@ export function CleanRacingMap({
     }
   };
 
-  // Update car marker position and rotation
+  // Update accurate GPS user pin for navigation
   const updateCarMarker = async (location: [number, number], heading: number) => {
     if (!map.current) return;
 
     try {
       if (!userMarkerRef.current) {
-        // Create car marker element
+        // Create precise GPS location pin
         const markerElement = document.createElement('div');
-        markerElement.className = 'car-marker';
-        markerElement.style.width = '36px';
-        markerElement.style.height = '36px';
-        markerElement.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g filter="url(#filter0_d_1_1)">
-              <path d="M18 4L22 10H30L28 26H24L22 30H14L12 26H8L6 10H14L18 4Z" fill="#00D4FF" stroke="#0099CC" stroke-width="1"/>
-              <circle cx="12" cy="22" r="2" fill="#333"/>
-              <circle cx="24" cy="22" r="2" fill="#333"/>
-              <rect x="16" y="12" width="4" height="6" rx="1" fill="#004466"/>
-            </g>
-            <defs>
-              <filter id="filter0_d_1_1" x="0" y="0" width="36" height="36" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-                <feOffset dy="2"/>
-                <feGaussianBlur stdDeviation="3"/>
-                <feComposite in2="hardAlpha" operator="out"/>
-                <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0.831373 0 0 0 0 1 0 0 0 0.3 0"/>
-                <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
-                <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
-              </filter>
-            </defs>
-          </svg>
-        `)}")`;
-        markerElement.style.backgroundSize = 'contain';
-        markerElement.style.backgroundRepeat = 'no-repeat';
-        markerElement.style.backgroundPosition = 'center';
+        markerElement.className = 'gps-user-pin';
+        markerElement.innerHTML = `
+          <div class="gps-pin-container" style="
+            width: 28px;
+            height: 28px;
+            position: relative;
+            transform: rotate(${heading}deg);
+          ">
+            <!-- Pulsing accuracy circle -->
+            <div style="
+              position: absolute;
+              width: 40px;
+              height: 40px;
+              background: radial-gradient(circle, rgba(0, 212, 255, 0.2) 0%, transparent 70%);
+              border: 2px solid rgba(0, 212, 255, 0.4);
+              border-radius: 50%;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              animation: gpsPulse 2s infinite ease-in-out;
+            "></div>
+            
+            <!-- Main GPS pin -->
+            <div style="
+              width: 28px;
+              height: 28px;
+              background: linear-gradient(145deg, #00D4FF 0%, #0099CC 100%);
+              border: 4px solid #ffffff;
+              border-radius: 50%;
+              position: relative;
+              box-shadow: 
+                0 0 0 2px rgba(0, 212, 255, 0.3),
+                0 4px 12px rgba(0, 212, 255, 0.4),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            ">
+              <!-- Direction arrow for heading -->
+              <div style="
+                position: absolute;
+                width: 0;
+                height: 0;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-bottom: 10px solid #ffffff;
+                top: -12px;
+                left: 50%;
+                transform: translateX(-50%);
+                filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+              "></div>
+              
+              <!-- Center accuracy dot -->
+              <div style="
+                position: absolute;
+                width: 6px;
+                height: 6px;
+                background: #ffffff;
+                border-radius: 50%;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+              "></div>
+            </div>
+          </div>
+          
+          <style>
+            @keyframes gpsPulse {
+              0% { 
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+              }
+              50% { 
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 0.4;
+              }
+              100% { 
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+              }
+            }
+          </style>
+        `;
 
         const mapboxgl = await import('mapbox-gl');
         userMarkerRef.current = new mapboxgl.default.Marker({
           element: markerElement,
           anchor: 'center'
         }).setLngLat(location).addTo(map.current);
+
+        console.log('📍 Created accurate GPS pin at:', location);
       } else {
-        // Update existing marker position
+        // Update existing marker position and heading
         userMarkerRef.current.setLngLat(location);
+        
+        // Update heading rotation
+        const markerElement = userMarkerRef.current.getElement();
+        const pinContainer = markerElement.querySelector('.gps-pin-container');
+        if (pinContainer) {
+          pinContainer.style.transform = `rotate(${heading}deg)`;
+        }
       }
 
-      // Update marker rotation based on heading
-      if (userMarkerRef.current && heading > 0) {
-        const markerElement = userMarkerRef.current.getElement();
-        markerElement.style.transform = `rotate(${heading}deg)`;
+      // Auto-switch to driver view when navigation starts and user location updates
+      if (isNavigating && isFollowingUser && map.current) {
+        const zoom = isDriverView ? 17 : 14;
+        const pitch = isDriverView ? 60 : 0;
+        
+        map.current.flyTo({
+          center: location,
+          bearing: heading,
+          zoom: zoom,
+          pitch: pitch,
+          speed: 0.6,
+          essential: true
+        });
       }
+
     } catch (error) {
-      console.error('Failed to update car marker:', error);
+      console.error('Failed to update GPS user pin:', error);
     }
   };
 
@@ -545,6 +617,12 @@ export function CleanRacingMap({
               addRoutePolylineToMap(selectedRoute);
               startNavigationWithRoute(selectedRoute);
               setShowAlternatives(false);
+              
+              // Enable driver view and following for navigation
+              setIsDriverView(true);
+              setIsFollowingUser(true);
+              
+              console.log('🚀 Route selected - Driver view enabled');
             }}
             onLeaveNow={() => {
               if (alternativeRoutes.length > 0) {
@@ -552,6 +630,12 @@ export function CleanRacingMap({
                 addRoutePolylineToMap(alternativeRoutes[0]);
                 startNavigationWithRoute(alternativeRoutes[0]);
                 setShowAlternatives(false);
+                
+                // Enable driver view and following for navigation
+                setIsDriverView(true);
+                setIsFollowingUser(true);
+                
+                console.log('🚀 Navigation started - Driver view enabled');
               }
             }}
             onLeaveLater={() => {
