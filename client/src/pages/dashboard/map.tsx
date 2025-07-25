@@ -289,7 +289,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
-      {/* Enhanced Racing Map */}
+      {/* Full Screen Racing Map */}
       <RacingMap
         center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}
         zoom={15}
@@ -309,109 +309,45 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
         }}
       />
 
-      {/* Minimal Top Header */}
-      <div className="absolute top-0 left-0 right-0 z-30">
-        <div className="bg-black/60 backdrop-blur-sm px-4 py-2">
-          <div className="flex items-center justify-between">
-            {/* App title and status - minimal */}
-            <div className="flex items-center space-x-3">
-              <h1 className="text-sm font-bold tracking-wider text-white/90">GHOSTRACER</h1>
-              <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full ${
-                isConnected ? 'bg-racing-green/20' : 'bg-racing-red/20'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${
-                  isConnected ? 'bg-racing-green' : 'bg-racing-red'
-                }`} />
-                <span className={`text-[10px] font-medium ${
-                  isConnected ? 'text-racing-green' : 'text-racing-red'
-                }`}>
-                  {isConnected ? 'ONLINE' : 'OFFLINE'}
-                </span>
-              </div>
-              {nearbyUsersCount > 0 && (
-                <span className="text-[10px] text-white/50">
-                  {nearbyUsersCount} NEARBY
-                </span>
-              )}
-            </div>
-            
-            {/* Menu button only */}
-            <Button
-              onClick={() => setIsMenuOpen(true)}
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 hover:bg-white/10 rounded-lg"
-            >
-              <Menu className="w-4 h-4 text-white/70" />
-            </Button>
-          </div>
+      {/* Minimal Floating Status Indicator - Top Right */}
+      <div className="absolute top-4 right-4 z-30 flex items-center space-x-2">
+        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full backdrop-blur-sm ${
+          isConnected ? 'bg-racing-green/20' : 'bg-racing-red/20'
+        }`}>
+          <div className={`w-2 h-2 rounded-full ${
+            isConnected ? 'bg-racing-green' : 'bg-racing-red'
+          }`} />
+          <span className={`text-xs font-medium ${
+            isConnected ? 'text-racing-green' : 'text-racing-red'
+          }`}>
+            {isConnected ? 'ONLINE' : 'OFFLINE'}
+          </span>
         </div>
+        <Button
+          onClick={() => setIsMenuOpen(true)}
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 bg-black/50 backdrop-blur-sm hover:bg-black/70 rounded-full"
+        >
+          <Menu className="w-4 h-4 text-white" />
+        </Button>
       </div>
 
-      {/* Speed HUD (Bottom Left with proper spacing) */}
+      {/* Minimal Speed HUD - Bottom Left */}
       <SpeedHud
         currentSpeed={speed || 0}
         distanceTraveled={distanceTraveled}
-        className="absolute bottom-24 left-20 z-20"
+        className="absolute bottom-4 left-4 z-20"
       />
 
-      {/* Action Buttons (Right Side) */}
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">
-        <ActionButtons
-          isGhostMode={isGhostMode}
-          onGhostModeToggle={handleGhostModeToggle}
-          onReportAlert={() => setIsReportModalOpen(true)}
-          onCreateEvent={() => setIsEventModalOpen(true)}
-          onShowUserList={() => setIsUserListModalOpen(true)}
-        />
-      </div>
-
-      {/* Bottom Control Bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-30">
-        <div className="bg-racing-dark/90 backdrop-blur-md border-t border-racing-steel/30 px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* Status Toggle */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-racing-gray">Status:</span>
-                <Select value={userStatus} onValueChange={setUserStatus}>
-                  <SelectTrigger className="bg-racing-steel/50 border-racing-gray/30 text-white text-sm h-8 w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-racing-dark border-racing-steel/30">
-                    <SelectItem value="live" className="text-white hover:bg-racing-steel/30">Live</SelectItem>
-                    <SelectItem value="ghost" className="text-white hover:bg-racing-steel/30">Ghost</SelectItem>
-                    <SelectItem value="offline" className="text-white hover:bg-racing-steel/30">Offline</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            {/* Center Action */}
-            <Button
-              onClick={centerMap}
-              className="bg-gradient-to-r from-racing-blue to-racing-red hover:from-racing-blue/80 hover:to-racing-red/80 text-white px-6 py-2 text-sm font-semibold tracking-wide"
-            >
-              CENTER MAP
-            </Button>
-            
-            {/* Share Radius */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-racing-gray">Range:</span>
-              <Select value={shareRadius} onValueChange={setShareRadius}>
-                <SelectTrigger className="bg-racing-steel/50 border-racing-gray/30 text-white text-sm h-8 w-16">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-racing-dark border-racing-steel/30">
-                  <SelectItem value="1" className="text-white hover:bg-racing-steel/30">1km</SelectItem>
-                  <SelectItem value="2" className="text-white hover:bg-racing-steel/30">2km</SelectItem>
-                  <SelectItem value="5" className="text-white hover:bg-racing-steel/30">5km</SelectItem>
-                  <SelectItem value="10" className="text-white hover:bg-racing-steel/30">10km</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
+      {/* Minimal Center Map Button - Bottom Center */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+        <Button
+          onClick={centerMap}
+          className="bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white px-4 py-2 text-sm font-semibold rounded-full"
+        >
+          CENTER
+        </Button>
       </div>
 
       {/* Navigation Panel */}

@@ -549,12 +549,12 @@ export function RacingMap({
   };
   
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative w-screen h-screen ${className}`}>
       {/* Map container */}
       <div 
         ref={mapContainer} 
-        className="w-full h-full" 
-        style={{ minHeight: '400px' }}
+        className="w-full h-full absolute inset-0" 
+        style={{ minHeight: '100vh' }}
       />
       
       {/* Racing-style UI overlay */}
