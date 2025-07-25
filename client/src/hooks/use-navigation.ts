@@ -57,6 +57,7 @@ interface NavigationRoute {
     distance: number;
     duration: number;
   }>;
+  id?: string;
 }
 
 interface RouteOptions {
@@ -129,20 +130,20 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     try {
       const profile = options.profile;
       const coordinates = `${start[0]},${start[1]};${end[0]},${end[1]}`;
-      
+
       let url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}`;
       url += '?geometries=geojson&steps=true&voice_instructions=true&banner_instructions=true';
-      
+
       // Add route options
       const excludeParams = [];
       if (options.avoidHighways) excludeParams.push('motorway');
       if (options.avoidTolls) excludeParams.push('toll');
       if (options.avoidFerries) excludeParams.push('ferry');
-      
+
       if (excludeParams.length > 0) {
         url += `&exclude=${excludeParams.join(',')}`;
       }
-      
+
       url += `&access_token=${mapboxToken}`;
 
       const response = await fetch(url);
@@ -151,7 +152,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       if (data.routes && data.routes.length > 0) {
         return data.routes[0];
       }
-      
+
       return null;
     } catch (error) {
       console.error('Failed to get route:', error);
@@ -254,22 +255,22 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     setCurrentRoute(route);
     setIsNavigating(true);
     setCurrentStepIndex(0);
-    
+
     // Set up steps
     const allSteps = route.legs.flatMap(leg => leg.steps);
     setCurrentStep(allSteps[0] || null);
     setRemainingSteps(allSteps.slice(1));
-    
+
     // Calculate ETA
     const arrivalTime = new Date(Date.now() + route.duration * 1000);
     setEta(arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    
+
     // Draw route on map
     drawRoute(route);
-    
+
     // Start location tracking
     startLocationTracking();
-    
+
     return true;
   }, [getRoute, drawRoute]);
 
@@ -284,14 +285,14 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
           position.coords.latitude
         ];
         const heading = position.coords.heading || 0;
-        
+
         setUserLocation(newLocation);
         setUserHeading(heading);
-        
+
         if (onLocationUpdate) {
           onLocationUpdate(newLocation, position.coords.speed || 0, heading);
         }
-        
+
         // Update navigation progress
         updateNavigationProgress(newLocation);
       },
@@ -348,7 +349,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     const minDistanceToRoute = Math.min(...routeCoords.map(coord => 
       calculateDistance(location, coord)
     ));
-    
+
     setIsOffRoute(minDistanceToRoute > 100);
   }, [currentRoute, currentStep, remainingSteps, calculateDistance]);
 
@@ -387,7 +388,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
 
     try {
       const routeOpts = { ...routeOptions, ...options };
-      
+
       const params = new URLSearchParams({
         geometries: 'geojson',
         steps: 'true',
@@ -421,7 +422,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
         }));
 
         setAlternativeRoutes(routes);
-        
+
         // Notify parent component about alternatives
         if (onRouteAlternatives) {
           onRouteAlternatives(routes);
@@ -440,12 +441,12 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     if (!selectedRoute && alternativeRoutes.length === 0) return null;
 
     const route = selectedRoute || alternativeRoutes[0];
-    
+
     try {
       setCurrentRoute(route);
       setIsNavigating(true);
       setShowAlternatives(false);
-      
+
       // Set up navigation steps with enhanced data
       if (route.legs && route.legs.length > 0) {
         const allSteps = route.legs.flatMap((leg: any) => leg.steps);
@@ -457,14 +458,14 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       // Calculate initial values
       setRemainingDistance(route.distance);
       setRemainingTime(route.duration);
-      
+
       // Update ETA
       const arrivalTime = new Date(Date.now() + route.duration * 1000);
       setEta(arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
       // Draw route on map
       drawRoute(route);
-      
+
       // Start location tracking
       startLocationTracking();
 
@@ -498,12 +499,267 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     };
   }, []);
 
+    // Get route alternatives from Mapbox Directions API
+    const getRouteAlternatives = useCallback(async (
+        start: [number, number],
+        end: [number, number],
+        options: RouteOptions = {
+          profile: 'driving-traffic',
+          avoidHighways: false,
+          avoidTolls: false,
+          avoidFerries: true
+        }
+      ): Promise<NavigationRoute[]> => {
+        try {
+          const profile = options.profile;
+          const coordinates = `${start[0]},${start[1]};${end[0]},${end[1]}`;
+    
+          let url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}`;
+          url += '?geometries=geojson&steps=true&voice_instructions=true&banner_instructions=true&alternatives=true';
+    
+          // Add route options
+          const excludeParams = [];
+          if (options.avoidHighways) excludeParams.push('motorway');
+          if (options.avoidTolls) excludeParams.push('toll');
+          if (options.avoidFerries) excludeParams.push('ferry');
+    
+          if (excludeParams.length > 0) {
+            url += `&exclude=${excludeParams.join(',')}`;
+          }
+    
+          url += `&access_token=${mapboxToken}`;
+    
+          const response = await fetch(url);
+          const data = await response.json();
+    
+          if (data.routes && data.routes.length > 0) {
+            return data.routes.map((route: any, index: number) => ({
+              ...route,
+              id: `route_${index}_${Date.now()}`
+            }));
+          }
+    
+          return [];
+        } catch (error) {
+          console.error('Failed to get route alternatives:', error);
+          return [];
+        }
+      }, [mapboxToken]);
+    
+      // Display multiple routes on map
+      const displayRoutesOnMap = useCallback((routes: NavigationRoute[]) => {
+        if (!map) return;
+    
+        // Clear existing routes
+        clearRoutesFromMap();
+    
+        routes.forEach((route, index) => {
+          const sourceId = `route-${index}`;
+          const layerId = `route-line-${index}`;
+          const glowLayerId = `route-glow-${index}`;
+    
+          // Route colors: main route (blue), alternative 1 (green), alternative 2 (orange)
+          const colors = ['#3B82F6', '#10B981', '#F59E0B'];
+          const color = colors[index] || '#6B7280';
+    
+          if (map.getSource(sourceId)) {
+            map.removeLayer(glowLayerId);
+            map.removeLayer(layerId);
+            map.removeSource(sourceId);
+          }
+    
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: { routeIndex: index },
+              geometry: route.geometry
+            }
+          });
+    
+          // Add glow effect
+          map.addLayer({
+            id: glowLayerId,
+            type: 'line',
+            source: sourceId,
+            paint: {
+              'line-color': color,
+              'line-width': index === 0 ? 12 : 8,
+              'line-opacity': 0.4,
+              'line-blur': 3
+            }
+          });
+    
+          // Add main route line
+          map.addLayer({
+            id: layerId,
+            type: 'line',
+            source: sourceId,
+            paint: {
+              'line-color': color,
+              'line-width': index === 0 ? 6 : 4,
+              'line-opacity': 1
+            }
+          });
+        });
+    
+        // Fit map to show all routes
+        if (routes.length > 0) {
+          const coordinates = routes[0].geometry.coordinates;
+          const bounds = coordinates.reduce((bounds, coord) => {
+            return bounds.extend(coord as [number, number]);
+          }, new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+    
+          map.fitBounds(bounds, { padding: 100 });
+        }
+      }, [map]);
+    
+      // Clear routes from map
+      const clearRoutesFromMap = useCallback(() => {
+        if (!map) return;
+    
+        for (let i = 0; i < 5; i++) {
+          const sourceId = `route-${i}`;
+          const layerId = `route-line-${i}`;
+          const glowLayerId = `route-glow-${i}`;
+    
+          if (map.getLayer(glowLayerId)) map.removeLayer(glowLayerId);
+          if (map.getLayer(layerId)) map.removeLayer(layerId);
+          if (map.getSource(sourceId)) map.removeSource(sourceId);
+        }
+      }, [map]);
+    
+      // Display single selected route
+      const displaySingleRoute = useCallback((route: NavigationRoute) => {
+        if (!map) return;
+    
+        clearRoutesFromMap();
+    
+        const sourceId = 'selected-route';
+        const layerId = 'selected-route-line';
+        const glowLayerId = 'selected-route-glow';
+    
+        if (map.getSource(sourceId)) {
+          map.removeLayer(glowLayerId);
+          map.removeLayer(layerId);
+          map.removeSource(sourceId);
+        }
+    
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          }
+        });
+    
+        // Add glow effect
+        map.addLayer({
+          id: glowLayerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#00ff88',
+            'line-width': 12,
+            'line-opacity': 0.4,
+            'line-blur': 3
+          }
+        });
+    
+        // Add main route line
+        map.addLayer({
+          id: layerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#00ff88',
+            'line-width': 6,
+            'line-opacity': 1
+          }
+        });
+      }, [map]);
+
+  // Plan route with alternatives and show overview
+  const planRouteWithAlternatives2 = useCallback(async (
+    start: [number, number],
+    end: [number, number],
+    options?: RouteOptions
+  ) => {
+    const routes = await getRouteAlternatives(start, end, options || routeOptions);
+    setAlternativeRoutes(routes);
+
+    if (routes.length > 0) {
+      onRouteAlternatives?.(routes);
+      setShowAlternatives(true);
+
+      // Display routes on map
+      if (map) {
+        displayRoutesOnMap(routes);
+      }
+    }
+
+    return routes;
+  }, [getRouteAlternatives, routeOptions, onRouteAlternatives, map]);
+
+  // Start navigation with a specific route
+  const startNavigationWithRoute2 = useCallback(async (route: NavigationRoute) => {
+    setCurrentRoute(route);
+    setAlternativeRoutes([]);
+    setShowAlternatives(false);
+    setIsNavigating(true);
+    setCurrentStepIndex(0);
+
+    // Extract steps from route
+    const allSteps: NavigationStep[] = [];
+    route.legs?.forEach((leg: any) => {
+      leg.steps?.forEach((step: any) => {
+        allSteps.push({
+          instruction: step.maneuver?.instruction || '',
+          distance: step.distance || 0,
+          duration: step.duration || 0,
+          maneuver: {
+            type: step.maneuver?.type || 'continue',
+            modifier: step.maneuver?.modifier,
+            bearing_after: step.maneuver?.bearing_after,
+            bearing_before: step.maneuver?.bearing_before
+          },
+          name: step.name || '',
+          geometry: step.geometry || { coordinates: [] },
+          voiceInstructions: step.voiceInstructions,
+          bannerInstructions: step.bannerInstructions,
+          intersections: step.intersections
+        });
+      });
+    });
+
+    setRemainingSteps(allSteps);
+    setCurrentStep(allSteps[0] || null);
+    setRemainingDistance(route.distance || 0);
+    setRemainingTime(route.duration || 0);
+
+    // Calculate ETA
+    const now = new Date();
+    const etaTime = new Date(now.getTime() + (route.duration || 0) * 1000);
+    setEta(etaTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+    // Clear route alternatives from map and show only selected route
+    if (map) {
+      clearRoutesFromMap();
+      displaySingleRoute(route);
+    }
+
+    return true;
+  }, [map]);
+
   return {
+    // State
     isNavigating,
     currentRoute,
     alternativeRoutes,
     currentStep,
     remainingSteps,
+    currentStepIndex,
     userLocation,
     userHeading,
     remainingDistance,
@@ -511,17 +767,28 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
     eta,
     isOffRoute,
     voiceEnabled,
-    setVoiceEnabled,
     showAlternatives,
-    setShowAlternatives,
     routeOptions,
-    setRouteOptions,
+
+    // Actions
     startNavigation,
-    startNavigationWithRoute,
-    planRouteWithAlternatives,
+    startNavigationWithRoute: startNavigationWithRoute2,
+    planRouteWithAlternatives: planRouteWithAlternatives2,
     stopNavigation,
+    updateNavigationProgress,
+    setVoiceEnabled,
+    setShowAlternatives,
+    setRouteOptions,
     searchPlaces,
     recenterMap,
-    getRoute
+    getRoute,
+
+    // Utilities
+    formatDistance: (meters: number) => meters < 1000 ? `${Math.round(meters)}m` : `${(meters/1000).toFixed(1)}km`,
+    formatDuration: (seconds: number) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    }
   };
 }

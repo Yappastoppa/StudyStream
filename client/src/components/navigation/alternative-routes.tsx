@@ -56,6 +56,7 @@ interface AlternativeRoutesProps {
   onClose: () => void;
   onLeaveNow: () => void;
   onLeaveLater: () => void;
+  onRouteOptionsChange?: (options: { avoidTolls: boolean; avoidFerries: boolean; avoidHighways: boolean }) => void;
   className?: string;
 }
 
@@ -68,12 +69,18 @@ export function AlternativeRoutes({
   onClose,
   onLeaveNow,
   onLeaveLater,
+  onRouteOptionsChange,
   className = ""
 }: AlternativeRoutesProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [routeOptions, setRouteOptions] = useState<AlternativeRoute[]>([]);
+  const [routePreferences, setRoutePreferences] = useState({
+    avoidTolls: false,
+    avoidFerries: false,
+    avoidHighways: false
+  });
 
-  // Process routes into display format
+  // Process routes into display format with enhanced analysis
   useEffect(() => {
     if (!routes?.length) return;
 
@@ -82,27 +89,38 @@ export function AlternativeRoutes({
       const duration = Math.round(route.duration / 60); // Convert to minutes
       const distance = (route.distance / 1000).toFixed(1); // Convert to km
       
-      // Simulate route analysis (in real app, this would come from Mapbox)
-      const hazards = Math.floor(Math.random() * 3) + (isMain ? 2 : 1);
-      const tolls = Math.random() > 0.7;
-      const traffic = isMain ? 'moderate' : (Math.random() > 0.5 ? 'light' : 'heavy');
+      // Analyze route based on Mapbox data
+      const hazards = analyzeRouteHazards(route);
+      const tolls = analyzeRouteTolls(route);
+      const traffic = analyzeTrafficLevel(route);
       
       let type: 'best' | 'fastest' | 'shortest' = 'fastest';
       let description = '';
-      let color = '#8B5CF6'; // Default purple
+      let color = '#3B82F6'; // Default blue
       
       if (isMain) {
         type = 'best';
-        description = 'Best route, typical traffic';
-        color = '#8B5CF6'; // Purple for main route
-      } else if (route.duration < routes[0].duration) {
-        type = 'fastest';
-        description = 'Fastest route available';
-        color = '#10B981'; // Green for fastest
+        description = 'Recommended route';
+        color = '#3B82F6'; // Blue for main route
       } else {
-        type = 'shortest';
-        description = 'Shorter distance';
-        color = '#F59E0B'; // Orange for shortest
+        // Compare with main route to determine type
+        const mainRoute = routes[0];
+        const timeDiff = ((route.duration - mainRoute.duration) / 60).toFixed(0);
+        const distanceDiff = ((route.distance - mainRoute.distance) / 1000).toFixed(1);
+        
+        if (route.duration < mainRoute.duration) {
+          type = 'fastest';
+          description = `${timeDiff} min faster`;
+          color = '#10B981'; // Green for fastest
+        } else if (route.distance < mainRoute.distance) {
+          type = 'shortest';
+          description = `${distanceDiff} km shorter`;
+          color = '#F59E0B'; // Orange for shortest
+        } else {
+          type = 'fastest';
+          description = tolls ? 'Avoids tolls' : 'Alternative route';
+          color = '#6B7280'; // Gray for alternative
+        }
       }
 
       return {
@@ -119,6 +137,40 @@ export function AlternativeRoutes({
     setRouteOptions(processedRoutes);
     setSelectedRouteId(processedRoutes[0]?.route.id || null);
   }, [routes]);
+
+  // Analyze route for potential hazards based on congestion data
+  const analyzeRouteHazards = (route: RouteAlternative): number => {
+    if (!route.annotation?.congestion) return 0;
+    
+    const severeCount = route.annotation.congestion.filter(level => level === 'severe').length;
+    const heavyCount = route.annotation.congestion.filter(level => level === 'heavy').length;
+    
+    return Math.min(5, Math.floor(severeCount / 5) + Math.floor(heavyCount / 10));
+  };
+
+  // Analyze route for tolls (simplified - could use route waypoints analysis)
+  const analyzeRouteTolls = (route: RouteAlternative): boolean => {
+    // Check if route passes through typical toll roads (simplified)
+    // In production, this would analyze route waypoints or use Mapbox toll data
+    return route.weight_name === 'routability' && route.duration > 1800; // Routes >30min more likely to have tolls
+  };
+
+  // Analyze traffic level based on congestion annotation
+  const analyzeTrafficLevel = (route: RouteAlternative): 'light' | 'moderate' | 'heavy' => {
+    if (!route.annotation?.congestion) return 'light';
+    
+    const congestionLevels = route.annotation.congestion;
+    const severeCount = congestionLevels.filter(level => level === 'severe').length;
+    const heavyCount = congestionLevels.filter(level => level === 'heavy').length;
+    const moderateCount = congestionLevels.filter(level => level === 'moderate').length;
+    
+    const totalSegments = congestionLevels.length;
+    const congestionRatio = (severeCount * 3 + heavyCount * 2 + moderateCount) / totalSegments;
+    
+    if (congestionRatio > 1.5) return 'heavy';
+    if (congestionRatio > 0.5) return 'moderate';
+    return 'light';
+  };
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.round(seconds / 60);
@@ -262,6 +314,46 @@ export function AlternativeRoutes({
               ))}
             </div>
 
+            {/* Route Options */}
+            <div className="p-4 bg-racing-dark/30 border-t border-racing-blue/10">
+              <div className="text-white/70 text-sm font-medium mb-3">Route Options</div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-sm">Avoid Tolls</span>
+                  <Switch
+                    checked={routePreferences.avoidTolls}
+                    onCheckedChange={(checked) => {
+                      setRoutePreferences(prev => ({ ...prev, avoidTolls: checked }));
+                      onRouteOptionsChange?.({ ...routePreferences, avoidTolls: checked });
+                    }}
+                    className="scale-75"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-sm">Avoid Ferries</span>
+                  <Switch
+                    checked={routePreferences.avoidFerries}
+                    onCheckedChange={(checked) => {
+                      setRoutePreferences(prev => ({ ...prev, avoidFerries: checked }));
+                      onRouteOptionsChange?.({ ...routePreferences, avoidFerries: checked });
+                    }}
+                    className="scale-75"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-sm">Avoid Highways</span>
+                  <Switch
+                    checked={routePreferences.avoidHighways}
+                    onCheckedChange={(checked) => {
+                      setRoutePreferences(prev => ({ ...prev, avoidHighways: checked }));
+                      onRouteOptionsChange?.({ ...routePreferences, avoidHighways: checked });
+                    }}
+                    className="scale-75"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Action Buttons */}
             <div className="p-4 bg-racing-dark/50 border-t border-racing-blue/20">
               <div className="flex space-x-3">
@@ -276,7 +368,7 @@ export function AlternativeRoutes({
                   onClick={onLeaveNow}
                   className="flex-1 bg-racing-blue hover:bg-racing-blue/80 text-white font-semibold"
                 >
-                  Go now
+                  Start Navigation
                 </Button>
               </div>
             </div>

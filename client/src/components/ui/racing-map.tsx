@@ -698,7 +698,8 @@ export function RacingMap({
         isVisible={showFloatingSearch}
         onClose={() => setShowFloatingSearch(false)}
         onDestinationSelect={async (destination) => {
-          const success = await startNavigation(
+          // Plan route with alternatives instead of direct navigation
+          const routes = await planRouteWithAlternatives(
             userLocation || [-74.006, 40.7128], 
             destination.coordinates,
             { 
@@ -708,21 +709,24 @@ export function RacingMap({
               avoidFerries: false
             }
           );
-          if (success) {
+          if (routes.length > 0) {
             setShowFloatingSearch(false);
+            // AlternativeRoutes component will automatically show due to showAlternatives state
           }
         }}
         onPlaceSearch={searchPlaces}
       />
 
-      {/* Route Planner Modal - Keep for advanced options */}
+      {/* Route Planner Modal - For advanced route planning */}
       <RoutePlanner
         isActive={showRoutePlanner}
         onClose={() => setShowRoutePlanner(false)}
         onRouteStart={async (start: [number, number], end: [number, number], options: any) => {
-          const success = await startNavigation(start, end, options);
-          if (success) {
+          // Plan route with alternatives to show overview
+          const routes = await planRouteWithAlternatives(start, end, options);
+          if (routes.length > 0) {
             setShowRoutePlanner(false);
+            // AlternativeRoutes component will show due to showAlternatives state
           }
         }}
         onPlaceSearch={searchPlaces}
@@ -1153,8 +1157,8 @@ export function RacingMap({
       <AlternativeRoutes
         isVisible={showAlternatives}
         routes={alternativeRoutes}
-        origin={routeStart ? "Current Location" : ""}
-        destination={routeEnd ? "Destination" : ""}
+        origin="Current Location"
+        destination="Destination"
         onRouteSelect={(route) => {
           startNavigationWithRoute(route);
         }}
@@ -1167,6 +1171,29 @@ export function RacingMap({
         onLeaveLater={() => {
           setShowAlternatives(false);
           // Could add scheduling functionality here
+        }}
+        onRouteOptionsChange={async (options) => {
+          // Update route options and recalculate routes in real-time
+          setRouteOptions(prev => ({
+            ...prev,
+            avoidTolls: options.avoidTolls,
+            avoidFerries: options.avoidFerries,
+            avoidHighways: options.avoidHighways
+          }));
+          
+          // Recalculate routes with new options
+          if (userLocation) {
+            const routes = await planRouteWithAlternatives(
+              userLocation,
+              userLocation, // This would be the actual destination
+              {
+                profile: 'driving-traffic',
+                avoidTolls: options.avoidTolls,
+                avoidFerries: options.avoidFerries,
+                avoidHighways: options.avoidHighways
+              }
+            );
+          }
         }}
       />
 

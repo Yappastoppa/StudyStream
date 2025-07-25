@@ -94,13 +94,25 @@ export function RoutePlanner({
     setActiveInput(null);
   };
 
-  // Start navigation
-  const handleStartNavigation = () => {
+  // Start route planning (show alternatives instead of direct navigation)
+  const handlePlanRoute = () => {
     if (startCoords && endCoords) {
       onRouteStart(startCoords, endCoords, routeOptions);
       onClose();
     }
   };
+
+  // Real-time route updates when options change
+  useEffect(() => {
+    if (startCoords && endCoords) {
+      // Debounce route updates to avoid too many API calls
+      const timeoutId = setTimeout(() => {
+        handleSearch('', 'end'); // Trigger route recalculation
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [routeOptions.avoidHighways, routeOptions.avoidTolls, routeOptions.avoidFerries]);
 
   // Swap start and end locations
   const swapLocations = () => {
@@ -248,15 +260,23 @@ export function RoutePlanner({
             </div>
           </div>
 
-          {/* Start Navigation Button */}
+          {/* Plan Route Button */}
           <Button
-            onClick={handleStartNavigation}
+            onClick={handlePlanRoute}
             disabled={!startCoords || !endCoords}
             className="w-full bg-racing-blue hover:bg-racing-blue/80 text-white font-semibold py-3"
           >
-            <Play className="h-4 w-4 mr-2" />
-            Start Navigation
+            <Route className="h-4 w-4 mr-2" />
+            Plan Route
           </Button>
+          
+          {startCoords && endCoords && (
+            <div className="text-center">
+              <p className="text-xs text-white/60">
+                Routes will be calculated with your preferences
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
