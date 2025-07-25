@@ -1,0 +1,79 @@
+🏎️ GhostRacer: Feature Expansion & Implementation Prompt
+
+Context:
+GhostRacer is a privacy-focused, invite-only racing/navigation app (iOS, SwiftUI/MapKit/Mapbox). The goal is to add advanced mapping, route creation, navigation, and AI-driven suggestions for racers in New Jersey.
+
+⸻
+
+1. Core Mapping & Navigation Features
+	•	Interactive Map (Mapbox or MapKit):
+	•	Allow zoom, pan, and dark/night racing theme.
+	•	See user’s current location (and ghost mode status).
+	•	Show nearby racers, live events, and crowdsourced alerts.
+	•	Custom Routes & Race Segments:
+	•	Users can draw, save, and share their favorite drives.
+	•	AI-generated “suggested” race routes based on real NJ roads, low-traffic data, and past activity.
+	•	Route overlays: Thick lines for routes, custom pins for police traps, speed cameras, fun spots.
+	•	Allow users to drop notes/tags (“Great for midnight runs”, “Watch for potholes”).
+	•	Navigation:
+	•	Start Navigation button on any route (minimum: follow polyline with heading/compass; ideal: step-by-step).
+	•	Allow users to get directions out-of-app (Apple/Google Maps fallback).
+	•	Re-center/auto-zoom to user location, route, or alert.
+	•	Heatmaps & Leaderboards:
+	•	Show areas/routes with the most racing activity.
+	•	Leaderboards: Best times, most alerts, most routes contributed.
+
+⸻
+
+2. AI & Backend Features
+	•	Automatic Route Suggestion:
+	•	Use OSMnx + Python to analyze New Jersey’s open street maps for best potential “race routes” (criteria: low traffic, winding, low-residential).
+	•	Generate and store routes as GeoJSON.
+	•	Backend endpoint to serve these routes (e.g. /routes/generate, /routes/all).
+	•	On frontend, display these AI-suggested routes on the map as overlays.
+	•	Simulation/Fake Data:
+	•	Add a simulation/debug flag that populates the map with ghost racers and fake alerts for UI testing.
+	•	Crowdsourced Alerts:
+	•	Allow users to anonymously mark hazards, police, speed traps.
+	•	Fuzzy location (round to ~100m).
+	•	Store in backend and display on map with time decay.
+
+⸻
+
+3. UX & Safety
+	•	Stealth Mode:
+	•	App appears as “GPS Logger” by default.
+	•	Unlocks via gesture or time window (as before).
+	•	Route Notes, Ratings, and Tags:
+	•	Users can leave tips, rate routes (“chill”, “danger”, “scenic”).
+	•	UI/UX Polish:
+	•	Clean, bold, easy-to-use map interface for use while driving (big buttons, high contrast).
+
+⸻
+
+4. Dev & Infra
+	•	Backend APIs:
+	•	/routes/generate – POST: create AI route (NJ only, for now)
+	•	/routes/all – GET: all user/AI routes (GeoJSON)
+	•	/alerts/nearby – GET: nearby police/speed traps
+	•	/leaderboard – GET: rankings (fastest, most alerts, etc)
+	•	Component Breakdown:
+	•	MapContainer
+	•	RaceRouteOverlay
+	•	AlertPin
+	•	NavigationPanel
+	•	RouteCreator/Editor
+	•	LeaderboardModal
+	•	Documentation:
+	•	How to get a Mapbox token & run OSMnx scripts.
+	•	Security checklist: how user data is anonymized, how to wipe logs, what’s never stored.
+
+⸻
+
+5. How to Use This Prompt
+	•	For Developers: Use as your new requirements/roadmap.
+	•	For AI: Feed to ChatGPT/Claude for React/Swift code, backend endpoints, OSMnx/GeoJSON scripts.
+	•	For UI Designers: Use as a reference for wireframes/mockups.
+	•	For Collaborators: Share for feedback/prioritization.
+
+⸻

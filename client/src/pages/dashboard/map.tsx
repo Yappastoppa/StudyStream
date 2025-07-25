@@ -9,10 +9,11 @@ import { ReportModal } from "@/components/racing/report-modal";
 import { EventModal } from "@/components/racing/event-modal";
 import { UserListModal } from "@/components/racing/user-list-modal";
 import { CountdownOverlay } from "@/components/racing/countdown-overlay";
+import { NavigationPanel } from "@/components/racing/navigation-panel";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useToast } from "@/hooks/use-toast";
-import { Flag, Satellite, Menu, Signal } from "lucide-react";
+import { Flag, Satellite, Menu, Signal, Crosshair } from "lucide-react";
 import { calculateDistance, formatDistance } from "@/lib/utils";
 import type { User } from "@shared/schema";
 
@@ -51,6 +52,9 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   const [distanceTraveled, setDistanceTraveled] = useState(0);
   const [lastPosition, setLastPosition] = useState<{lat: number, lng: number} | null>(null);
   const [savedRoutes, setSavedRoutes] = useState<any[]>([]);
+  const [navigationStart, setNavigationStart] = useState<[number, number] | null>(null);
+  const [navigationEnd, setNavigationEnd] = useState<[number, number] | null>(null);
+  const [showNavigationPanel, setShowNavigationPanel] = useState(false);
 
   // Geolocation
   const { 
@@ -298,6 +302,11 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
             description: `${route.name} has been saved to your routes.`,
           });
         }}
+        onNavigationStart={(start, end) => {
+          setNavigationStart(start);
+          setNavigationEnd(end);
+          setShowNavigationPanel(true);
+        }}
       />
 
       {/* Minimal Top Header */}
@@ -404,6 +413,20 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Navigation Panel */}
+      {showNavigationPanel && (
+        <NavigationPanel
+          origin={navigationStart}
+          destination={navigationEnd}
+          onClose={() => {
+            setShowNavigationPanel(false);
+            setNavigationStart(null);
+            setNavigationEnd(null);
+          }}
+          className="absolute bottom-24 left-6 z-20 max-w-sm"
+        />
+      )}
 
       {/* Side Menu */}
       <SideMenu

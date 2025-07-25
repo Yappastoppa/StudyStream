@@ -16,6 +16,7 @@ import {
   Layers
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -23,6 +24,7 @@ interface RacingMapProps {
   className?: string;
   onRouteSelect?: (route: any) => void;
   savedRoutes?: any[];
+  onNavigationStart?: (start: [number, number], end: [number, number]) => void;
 }
 
 export function RacingMap({ 
@@ -30,7 +32,8 @@ export function RacingMap({
   zoom = 13, 
   className = "",
   onRouteSelect,
-  savedRoutes = []
+  savedRoutes = [],
+  onNavigationStart
 }: RacingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -43,6 +46,11 @@ export function RacingMap({
   const [showHighwaysOnly, setShowHighwaysOnly] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<any[]>([]);
+  const [navigationMode, setNavigationMode] = useState(false);
+  const [routeStart, setRouteStart] = useState<[number, number] | null>(null);
+  const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
+  const [navigationRoute, setNavigationRoute] = useState<any>(null);
+  const [showOverlays, setShowOverlays] = useState(false);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -76,12 +84,24 @@ export function RacingMap({
           setupMapControls();
         });
         
-        // Route drawing functionality
+        // Route drawing and navigation functionality
         map.current.on('click', (e: any) => {
+          const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+          
           if (isDrawingRoute) {
-            const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
             setCurrentRoute(prev => [...prev, coords]);
             addRoutePoint(coords);
+          } else if (navigationMode) {
+            // Navigation mode: set start and end points
+            if (!routeStart) {
+              setRouteStart(coords);
+              addNavigationMarker(coords, 'start');
+            } else if (!routeEnd) {
+              setRouteEnd(coords);
+              addNavigationMarker(coords, 'end');
+              // Auto-calculate route when both points are set
+              calculateNavigationRoute(routeStart, coords);
+            }
           }
         });
         
@@ -374,6 +394,147 @@ export function RacingMap({
     });
   };
   
+  const addNavigationMarker = async (coords: [number, number], type: 'start' | 'end') => {
+    if (!map.current) return;
+    
+    const mapboxgl = await import('mapbox-gl');
+    
+    // Remove existing marker if any
+    const markerId = `navigation-${type}`;
+    const existingMarker = (map.current as any)[markerId];
+    if (existingMarker) {
+      existingMarker.remove();
+    }
+    
+    // Create custom marker element
+    const el = document.createElement('div');
+    el.className = 'navigation-marker';
+    el.style.width = '30px';
+    el.style.height = '30px';
+    el.style.borderRadius = '50%';
+    el.style.border = '3px solid white';
+    el.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+    
+    if (type === 'start') {
+      el.style.backgroundColor = '#00ff88';
+      el.innerHTML = '<div style="color: black; font-weight: bold; text-align: center; line-height: 24px;">A</div>';
+    } else {
+      el.style.backgroundColor = '#ff0033';
+      el.innerHTML = '<div style="color: white; font-weight: bold; text-align: center; line-height: 24px;">B</div>';
+    }
+    
+    const marker = new mapboxgl.default.Marker(el)
+      .setLngLat(coords)
+      .addTo(map.current);
+    
+    // Store marker reference
+    (map.current as any)[markerId] = marker;
+  };
+  
+  const calculateNavigationRoute = async (start: [number, number], end: [number, number]) => {
+    if (!map.current || !MAPBOX_TOKEN) return;
+    
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${start.join(',')};${end.join(',')}?` +
+        `geometries=geojson&steps=true&access_token=${MAPBOX_TOKEN}&overview=full&annotations=distance,duration,speed`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        setNavigationRoute(route);
+        
+        // Add route to map
+        if (map.current.getSource('navigation-route')) {
+          (map.current.getSource('navigation-route') as any).setData({
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          });
+        } else {
+          map.current.addSource('navigation-route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: route.geometry
+            }
+          });
+          
+          // Add glow effect layer
+          map.current.addLayer({
+            id: 'navigation-route-glow',
+            type: 'line',
+            source: 'navigation-route',
+            paint: {
+              'line-color': '#00ff88',
+              'line-width': 12,
+              'line-opacity': 0.4,
+              'line-blur': 3
+            }
+          });
+          
+          // Add main route layer
+          map.current.addLayer({
+            id: 'navigation-route-main',
+            type: 'line',
+            source: 'navigation-route',
+            paint: {
+              'line-color': '#00ff88',
+              'line-width': 4,
+              'line-opacity': 1
+            }
+          });
+        }
+        
+        // Fit map to route bounds
+        const bounds = new (await import('mapbox-gl')).default.LngLatBounds();
+        route.geometry.coordinates.forEach((coord: [number, number]) => {
+          bounds.extend(coord);
+        });
+        map.current.fitBounds(bounds, { padding: 100 });
+        
+        // Notify parent component that navigation has started
+        if (onNavigationStart) {
+          onNavigationStart(start, end);
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating route:', error);
+    }
+  };
+  
+  const clearNavigationRoute = () => {
+    if (!map.current) return;
+    
+    // Remove route layers
+    if (map.current.getLayer('navigation-route-main')) {
+      map.current.removeLayer('navigation-route-main');
+    }
+    if (map.current.getLayer('navigation-route-glow')) {
+      map.current.removeLayer('navigation-route-glow');
+    }
+    if (map.current.getSource('navigation-route')) {
+      map.current.removeSource('navigation-route');
+    }
+    
+    // Remove markers
+    ['start', 'end'].forEach(type => {
+      const markerId = `navigation-${type}`;
+      const marker = (map.current as any)[markerId];
+      if (marker) {
+        marker.remove();
+        delete (map.current as any)[markerId];
+      }
+    });
+    
+    setRouteStart(null);
+    setRouteEnd(null);
+    setNavigationRoute(null);
+  };
+  
   return (
     <div className={`relative ${className}`}>
       {/* Map container */}
@@ -461,6 +622,33 @@ export function RacingMap({
               >
                 <Route className="h-5 w-5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setNavigationMode(!navigationMode);
+                  if (navigationMode) {
+                    clearNavigationRoute();
+                  }
+                }}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${navigationMode ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'}`}
+                title="Navigation Mode"
+              >
+                <MapPin className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Overlay controls */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowOverlays(!showOverlays)}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showOverlays ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70'}`}
+                title="Route Overlays"
+              >
+                <Crosshair className="h-5 w-5" />
+              </Button>
             </div>
           </div>
           
@@ -490,6 +678,28 @@ export function RacingMap({
                     ×
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Navigation mode instructions */}
+          {navigationMode && !routeEnd && (
+            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="bg-black/80 backdrop-blur-sm rounded-full px-6 py-2 flex items-center space-x-3">
+                <span className="text-xs text-racing-blue">
+                  {!routeStart ? 'Click to set start point' : 'Click to set destination'}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setNavigationMode(false);
+                    clearNavigationRoute();
+                  }}
+                  className="h-6 w-6 text-white/70 hover:text-white"
+                >
+                  ×
+                </Button>
               </div>
             </div>
           )}
@@ -527,6 +737,13 @@ export function RacingMap({
           )}
         </>
       )}
+      
+      {/* Route Overlays */}
+      <RouteOverlays 
+        map={map.current}
+        overlays={sampleOverlays}
+        showOverlays={showOverlays}
+      />
     </div>
   );
 }
