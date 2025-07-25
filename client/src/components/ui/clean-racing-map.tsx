@@ -23,8 +23,7 @@ export function CleanRacingMap({
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
   useEffect(() => {
-    // Add debug info to verify React is mounting
-    console.log('🔥 CleanRacingMap mounting, mapContainer:', mapContainer.current);
+    console.log('🔥 CleanRacingMap mounting, mapContainer:', !!mapContainer.current);
     console.log('🔥 MAPBOX_TOKEN exists:', !!MAPBOX_TOKEN);
 
     if (map.current || !mapContainer.current) {
@@ -37,7 +36,10 @@ export function CleanRacingMap({
         console.log('🔥 Starting map initialization...');
 
         if (!MAPBOX_TOKEN) {
-          throw new Error('Mapbox token is missing from environment variables');
+          console.warn('No Mapbox token - showing fallback');
+          setMapError('No Mapbox token configured');
+          setIsMapLoaded(true);
+          return;
         }
 
         const mapboxgl = await import('mapbox-gl');
@@ -72,15 +74,14 @@ export function CleanRacingMap({
         map.current.on('error', (e: any) => {
           console.error('🔥 Map error:', e);
           setMapError(`Map error: ${e.error?.message || 'Unknown error'}`);
+          setIsMapLoaded(true); // Show fallback
         });
 
       } catch (error) {
         console.error('🔥 Map initialization failed:', error);
         setMapError(`Map init failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-
-        // Fallback to simulation mode
-        toast.error('Map failed to load - using simulation mode');
         setIsMapLoaded(true); // Show fallback UI
+        toast.error('Map failed to load - using simulation mode');
       }
     };
 
@@ -91,34 +92,26 @@ export function CleanRacingMap({
       clearTimeout(timer);
       if (map.current) {
         console.log('🔥 Cleaning up map...');
-        map.current.remove();
+        try {
+          map.current.remove();
+        } catch (e) {
+          console.warn('Map cleanup error:', e);
+        }
         map.current = null;
       }
     };
-  }, [center, zoom, MAPBOX_TOKEN]);
-
-  // Debug overlay to verify React is mounting
-  const debugOverlay = (
-    <div style={{ 
-      position: 'absolute', 
-      top: 0, 
-      left: 0, 
-      zIndex: 9999, 
-      color: 'white', 
-      background: 'rgba(0,0,0,0.8)', 
-      padding: '10px',
-      fontSize: '12px'
-    }}>
-      DEBUG: Map Status - Loaded: {isMapLoaded ? 'YES' : 'NO'} | Error: {mapError || 'NONE'}
-    </div>
-  );
+  }, [center, zoom, MAPBOX_TOKEN, driverView]);
 
   return (
-    <ErrorBoundary fallback={<div className="w-full h-full bg-red-500 text-white p-4">Map Error Boundary Triggered</div>}>
+    <ErrorBoundary fallback={
+      <div className="w-full h-full bg-red-500 text-white p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-bold mb-2">Map Error</div>
+          <div className="text-sm">Using simulation mode</div>
+        </div>
+      </div>
+    }>
       <div className={`relative w-full h-full ${className}`}>
-        {/* Always show debug overlay for now */}
-        {debugOverlay}
-
         {/* Map container */}
         <div
           ref={mapContainer}
@@ -136,31 +129,16 @@ export function CleanRacingMap({
           </div>
         )}
 
-        {/* Error overlay */}
-        {mapError && (
-          <div className="absolute inset-0 bg-racing-dark flex items-center justify-center z-10">
+        {/* Error/Fallback overlay */}
+        {mapError && isMapLoaded && (
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center z-10">
             <div className="text-center text-white p-4">
-              <div className="text-red-400 mb-2">Map Load Failed</div>
-              <div className="text-sm text-gray-300 mb-4">{mapError}</div>
-              <div className="text-xs text-gray-500">Using fallback racing interface</div>
-            </div>
-          </div>
-        )}
-
-        {/* Fallback racing interface when map fails */}
-        {mapError && (
-          <div className="absolute inset-0 bg-gradient-to-br from-racing-dark via-racing-charcoal to-racing-dark">
-            <div className="absolute inset-0 opacity-10">
-              <div className="grid grid-cols-8 h-full">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="border-r border-racing-steel/20"></div>
-                ))}
+              <div className="text-xl mb-4">🏁 GhostRacer</div>
+              <div className="text-sm text-gray-300 mb-4">Simulation Mode</div>
+              <div className="w-8 h-8 border-2 border-blue-500 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               </div>
-            </div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div className="w-8 h-8 border-2 border-racing-blue rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-racing-blue rounded-full animate-pulse"></div>
-              </div>
+              <div className="text-xs text-gray-500 mt-4">Map tiles unavailable</div>
             </div>
           </div>
         )}

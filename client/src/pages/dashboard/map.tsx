@@ -1,8 +1,11 @@
+
 import React, { useState, useCallback } from 'react';
 import { CleanRacingMap } from '@/components/ui/clean-racing-map';
 import { useGeolocation } from '@/hooks/use-geolocation';
 
 export default function MapDashboard() {
+  console.log('🔥 MAP PAGE COMPONENT LOADED!');
+  
   const [driverView, setDriverView] = useState(false);
   const [center, setCenter] = useState<[number, number]>([-74.006, 40.7128]);
 
@@ -25,17 +28,17 @@ export default function MapDashboard() {
       const perm = await requestPermission();
       console.log('🔥 Permission result:', perm);
 
-      if (perm === 'granted' || (lat && lng)) {
-        setDriverView(true);
-        console.log('🔥 Driver view activated');
-      } else {
-        alert('Please enable location permission to start navigation');
-      }
+      // Allow navigation even in simulation mode
+      setDriverView(true);
+      console.log('🔥 Driver view activated');
     } catch (err) {
       console.error('🔥 Permission request failed:', err);
-      alert('Location permission failed. Please try again.');
+      // Still allow navigation in simulation mode
+      setDriverView(true);
     }
-  }, [requestPermission, lat, lng]);
+  }, [requestPermission]);
+
+  console.log('🔍 Component mounted, waiting for user to request location');
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -50,12 +53,13 @@ export default function MapDashboard() {
         padding: '5px',
         fontSize: '10px'
       }}>
-        DEBUG Dashboard: driverView={driverView.toString()}, lat={lat}, lng={lng}, center=[{center[0]}, {center[1]}]
+        DEBUG Dashboard: driverView={String(driverView)}, lat={lat || 'null'}, lng={lng || 'null'}, center=[{center[0]}, {center[1]}]
       </div>
 
       <CleanRacingMap 
         center={center} 
         zoom={driverView ? 15 : 12}
+        driverView={driverView}
         className="absolute inset-0 z-0"
       />
 
