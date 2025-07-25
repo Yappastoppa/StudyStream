@@ -5,14 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Play, Pause, Square, Zap, Clock, Route } from 'lucide-react';
 
 interface SimulationModeProps {
-  map: any;
   isActive: boolean;
   onToggle: () => void;
   className?: string;
 }
 
 export function SimulationMode({ 
-  map,
   isActive, 
   onToggle,
   className = "" 

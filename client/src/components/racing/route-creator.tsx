@@ -6,17 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Save, X, MapPin, Route, Trash2 } from 'lucide-react';
 
 interface RouteCreatorProps {
-  map: any;
   isActive: boolean;
-  onClose: () => void;
+  onToggle: () => void;
   onRouteCreated?: (route: any) => void;
   className?: string;
 }
 
 export function RouteCreator({ 
-  map,
   isActive, 
-  onClose, 
+  onToggle, 
   onRouteCreated,
   className = "" 
 }: RouteCreatorProps) {
