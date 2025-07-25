@@ -73,6 +73,20 @@ export function RacingMap({
   const [navigationMode, setNavigationMode] = useState(false);
   const [routeStart, setRouteStart] = useState<[number, number] | null>(null);
   const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
+  
+  // Live Navigation State
+  const [isDriverView, setIsDriverView] = useState(true);
+  const [isAutoCenter, setIsAutoCenter] = useState(true);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userHeading, setUserHeading] = useState<number>(0);
+  const [userSpeed, setUserSpeed] = useState<number>(0);
+  const [isGPSLost, setIsGPSLost] = useState(false);
+  const [showCenterButton, setShowCenterButton] = useState(false);
+  const [isRerouting, setIsRerouting] = useState(false);
+  const lastUserLocationRef = useRef<[number, number] | null>(null);
+  const manualPanTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Feature toggles
   const [showOverlays, setShowOverlays] = useState(false);
   const [showAIRoutes, setShowAIRoutes] = useState(false);
   const [showRouteCreator, setShowRouteCreator] = useState(false);
@@ -83,7 +97,6 @@ export function RacingMap({
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [showGuidanceSimulator, setShowGuidanceSimulator] = useState(false);
   const [useProNavUI, setUseProNavUI] = useState(false);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [currentSpeed, setCurrentSpeed] = useState<number>(0);
   const [speedLimit, setSpeedLimit] = useState<number | undefined>(undefined);
   const [activeNavigationRoute, setActiveNavigationRoute] = useState<any>(null);
@@ -117,26 +130,194 @@ export function RacingMap({
     map: map.current,
     onLocationUpdate: (location: [number, number], speed?: number, heading?: number) => {
       setUserLocation(location);
+      setUserSpeed(speed || 0);
+      setUserHeading(heading || 0);
       setCurrentSpeed(speed || 0);
+      setIsGPSLost(false); // GPS signal recovered
       
-      if (isNavigating && map.current) {
-        // Auto-follow user during navigation with enhanced 3D perspective
+      // Auto-center map if navigation is active and auto-center is enabled
+      if (isNavigating && isAutoCenter && map.current) {
+        const zoom = isDriverView ? 17 : 14;
+        const pitch = isDriverView ? 60 : 0;
+        
         map.current.flyTo({
           center: location,
           bearing: heading || 0,
-          zoom: 17,
-          pitch: 60,
-          speed: 1.5,
+          zoom: zoom,
+          pitch: pitch,
+          speed: 0.8,
           essential: true
         });
       }
+      
+      // Check for off-route detection
+      if (isNavigating && currentRoute && lastUserLocationRef.current) {
+        checkOffRoute(location);
+      }
+      
+      lastUserLocationRef.current = location;
     },
     onRouteAlternatives: (routes) => {
       // Show alternative routes when available
       setShowAlternatives(true);
     }
   });
-  
+
+  // Off-route detection function
+  const checkOffRoute = (userLocation: [number, number]) => {
+    if (!currentRoute || !currentRoute.geometry?.coordinates) return;
+    
+    const routeCoords = currentRoute.geometry.coordinates;
+    let minDistance = Infinity;
+    
+    // Calculate distance to route line
+    for (let i = 0; i < routeCoords.length - 1; i++) {
+      const distance = distanceToLineSegment(userLocation, routeCoords[i], routeCoords[i + 1]);
+      minDistance = Math.min(minDistance, distance);
+    }
+    
+    // If user is more than 100m from route, trigger rerouting
+    if (minDistance > 0.1) { // 0.1 km = 100m
+      handleOffRoute();
+    }
+  };
+
+  // Handle off-route situation
+  const handleOffRoute = async () => {
+    if (isRerouting || !userLocation || !routeEnd) return;
+    
+    setIsRerouting(true);
+    toast.loading("You're off route. Rerouting...", { id: 'rerouting' });
+    
+    try {
+      await planRouteWithAlternatives(userLocation, routeEnd, routeOptions);
+      toast.success("New route calculated", { id: 'rerouting' });
+    } catch (error) {
+      toast.error("Failed to recalculate route", { id: 'rerouting' });
+    } finally {
+      setIsRerouting(false);
+    }
+  };
+
+  // Distance calculation helper
+  const distanceToLineSegment = (point: [number, number], lineStart: [number, number], lineEnd: [number, number]) => {
+    const [px, py] = point;
+    const [x1, y1] = lineStart;
+    const [x2, y2] = lineEnd;
+    
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+    
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    
+    let param = -1;
+    if (lenSq !== 0) param = dot / lenSq;
+    
+    let xx, yy;
+    
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    } else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    } else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+    
+    const dx = px - xx;
+    const dy = py - yy;
+    return Math.sqrt(dx * dx + dy * dy) * 111; // Convert to km approximately
+  };
+
+  // Toggle between driver and overview modes
+  const toggleViewMode = async () => {
+    const newMode = !isDriverView;
+    setIsDriverView(newMode);
+    
+    if (!map.current || !isNavigating) return;
+    
+    if (newMode) {
+      // Switch to driver view - close follow with 3D perspective
+      if (userLocation) {
+        map.current.flyTo({
+          center: userLocation,
+          zoom: 17,
+          pitch: 60,
+          bearing: userHeading,
+          speed: 1.2,
+          essential: true
+        });
+      }
+    } else {
+      // Switch to overview - show full route
+      if (currentRoute && currentRoute.geometry?.coordinates) {
+        const bounds = new (await import('mapbox-gl')).default.LngLatBounds();
+        currentRoute.geometry.coordinates.forEach((coord: [number, number]) => {
+          bounds.extend(coord);
+        });
+        
+        map.current.fitBounds(bounds, { 
+          padding: 50, 
+          duration: 600,
+          pitch: 0 
+        });
+      }
+    }
+  };
+
+  // Handle manual pan detection
+  const handleMapPan = () => {
+    if (!isNavigating) return;
+    
+    setIsAutoCenter(false);
+    setShowCenterButton(true);
+    
+    // Auto-hide center button after 10 seconds
+    if (manualPanTimeoutRef.current) {
+      clearTimeout(manualPanTimeoutRef.current);
+    }
+    
+    manualPanTimeoutRef.current = setTimeout(() => {
+      setShowCenterButton(false);
+    }, 10000);
+  };
+
+  // Return to auto-center mode
+  const handleRecenter = () => {
+    setIsAutoCenter(true);
+    setShowCenterButton(false);
+    
+    if (userLocation && map.current) {
+      map.current.flyTo({
+        center: userLocation,
+        zoom: isDriverView ? 17 : 14,
+        pitch: isDriverView ? 60 : 0,
+        bearing: userHeading,
+        speed: 1.0,
+        essential: true
+      });
+    }
+  };
+
+  // GPS loss detection
+  useEffect(() => {
+    if (!isNavigating) return;
+    
+    const gpsTimeout = setTimeout(() => {
+      if (!userLocation) {
+        setIsGPSLost(true);
+        toast.error("Searching for GPS signal...", { id: 'gps-lost' });
+      }
+    }, 10000); // 10 seconds without GPS update
+    
+    return () => clearTimeout(gpsTimeout);
+  }, [userLocation, isNavigating]);
+
   // Map style configurations
   const mapStyles = {
     navigation: 'mapbox://styles/mapbox/navigation-day-v1',
@@ -174,6 +355,10 @@ export function RacingMap({
           setupMapLayers();
           setupMapControls();
         });
+
+        // Add pan detection for manual navigation override
+        map.current.on('dragstart', handleMapPan);
+        map.current.on('zoomstart', handleMapPan);
         
         // Route drawing and navigation functionality
         map.current.on('click', (e: any) => {
@@ -1243,6 +1428,135 @@ export function RacingMap({
           upcomingManeuver={currentStep.maneuver}
           distanceToManeuver={remainingDistance}
         />
+      )}
+
+      {/* Live Navigation UI Elements */}
+      
+      {/* Center Button - appears when user manually pans during navigation */}
+      {showCenterButton && (
+        <div className="fixed bottom-20 right-4 z-50">
+          <Button 
+            onClick={handleRecenter}
+            className="bg-racing-blue hover:bg-racing-blue/80 text-white rounded-full p-3 shadow-lg"
+          >
+            <Crosshair className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
+
+      {/* Driver/Overview Mode Toggle */}
+      {isNavigating && (
+        <div className="fixed top-20 left-4 z-40">
+          <Button 
+            onClick={toggleViewMode}
+            className="bg-black/80 backdrop-blur-md hover:bg-black/70 text-white border border-racing-blue/50"
+          >
+            {isDriverView ? 'Overview' : 'Driver'}
+          </Button>
+        </div>
+      )}
+
+      {/* GPS Status Indicator */}
+      {isGPSLost && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+            <div className="animate-spin">
+              <Navigation className="h-4 w-4" />
+            </div>
+            <span>Searching for GPS...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Live Turn Instructions - Waze Style */}
+      {isNavigating && currentStep && userLocation && (
+        <div className="fixed top-16 left-4 right-4 z-40">
+          <div className="bg-black/90 backdrop-blur-md border border-racing-blue/50 rounded-xl p-4 shadow-xl">
+            {/* Distance and Main Instruction */}
+            <div className="flex items-center space-x-4 mb-3">
+              <div className="text-racing-blue text-3xl font-bold">
+                {Math.round(remainingDistance * 1000)}m
+              </div>
+              <div className="flex-1">
+                <div className="text-white text-lg font-medium">
+                  {currentStep.instruction}
+                </div>
+                <div className="text-racing-green text-sm">
+                  on {currentStep.name}
+                </div>
+              </div>
+              <div className="w-16 h-16 bg-racing-blue/20 rounded-lg flex items-center justify-center">
+                <Navigation className="h-8 w-8 text-racing-blue" />
+              </div>
+            </div>
+
+            {/* Speed and ETA Information */}
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center space-x-4">
+                <div className="text-white">
+                  <span className="text-racing-green">{Math.round(userSpeed * 3.6)}</span> km/h
+                </div>
+                {speedLimit && (
+                  <div className="text-white">
+                    Speed limit: <span className="text-racing-blue">{speedLimit}</span> km/h
+                  </div>
+                )}
+              </div>
+              <div className="text-white">
+                ETA: <span className="text-racing-green">{eta}</span>
+              </div>
+            </div>
+
+            {/* Next Steps Preview */}
+            {remainingSteps && remainingSteps.length > 1 && (
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <div className="text-gray-400 text-xs mb-2">Next 2 steps</div>
+                {remainingSteps.slice(1, 3).map((step, index) => (
+                  <div key={index} className="flex items-center space-x-2 text-sm text-gray-300 mb-1">
+                    <Navigation className="h-3 w-3" />
+                    <span>{step.instruction}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Speedometer - Bottom Left */}
+      {isNavigating && (
+        <div className="fixed bottom-4 left-4 z-40">
+          <div className="bg-black/90 backdrop-blur-md border border-racing-blue/50 rounded-full w-20 h-20 flex flex-col items-center justify-center shadow-xl">
+            <div className="text-racing-blue text-xl font-bold">
+              {Math.round(userSpeed * 3.6)}
+            </div>
+            <div className="text-white text-xs">km/h</div>
+          </div>
+        </div>
+      )}
+
+      {/* Route Progress Bar - Bottom */}
+      {isNavigating && currentRoute && (
+        <div className="fixed bottom-0 left-0 right-0 z-30">
+          <div className="bg-black/90 backdrop-blur-md border-t border-racing-blue/50 p-4">
+            <div className="flex justify-between items-center text-white text-sm mb-2">
+              <div>
+                <span className="text-racing-green font-bold">{remainingTime}</span> remaining
+              </div>
+              <div>
+                <span className="text-racing-blue font-bold">{(remainingDistance).toFixed(1)}</span> km
+              </div>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-racing-green h-2 rounded-full transition-all duration-500"
+                style={{ 
+                  width: `${100 - (remainingDistance / (currentRoute.distance / 1000)) * 100}%` 
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Offline Routes Manager */}

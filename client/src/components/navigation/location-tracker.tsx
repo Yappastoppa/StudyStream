@@ -22,6 +22,7 @@ export function LocationTracker({
   useEffect(() => {
     if (!isActive || !navigator.geolocation) return;
 
+    // Enhanced GPS settings for live navigation
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const coords: [number, number] = [
@@ -34,15 +35,32 @@ export function LocationTracker({
         setHeading(position.coords.heading || 0);
         setAccuracy(position.coords.accuracy);
         
-        onLocationUpdate(coords, position.coords.speed || 0, position.coords.heading || 0);
+        // High-frequency updates for smooth navigation
+        onLocationUpdate(
+          coords, 
+          position.coords.speed || 0, 
+          position.coords.heading || 0
+        );
       },
       (error) => {
-        console.error('Geolocation error:', error);
+        console.error('High-accuracy GPS error:', error);
+        // Fallback to less accurate positioning
+        navigator.geolocation.getCurrentPosition(
+          (fallbackPosition) => {
+            const coords: [number, number] = [
+              fallbackPosition.coords.longitude,
+              fallbackPosition.coords.latitude
+            ];
+            onLocationUpdate(coords, 0, 0);
+          },
+          () => console.error('Fallback GPS also failed'),
+          { enableHighAccuracy: false }
+        );
       },
       {
         enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 1000
+        timeout: 10000,
+        maximumAge: 500 // Very fresh updates for live navigation
       }
     );
 
