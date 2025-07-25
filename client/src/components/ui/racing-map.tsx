@@ -16,7 +16,8 @@ import {
   Layers,
   Trophy,
   Pencil,
-  Activity
+  Activity,
+  Search
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
@@ -25,6 +26,7 @@ import { RouteCreator } from '@/components/racing/route-creator';
 import { SimulationMode } from '@/components/racing/simulation-mode';
 import { RouteHeatmap } from '@/components/racing/route-heatmap';
 import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
+import { NavigationSearch } from '@/components/racing/navigation-search';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -64,6 +66,7 @@ export function RacingMap({
   const [showSimulation, setShowSimulation] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showNavigationSearch, setShowNavigationSearch] = useState(false);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -519,6 +522,55 @@ export function RacingMap({
     }
   };
   
+  const handleLocationSelect = (coordinates: [number, number], name: string) => {
+    if (!map.current) return;
+    
+    // Fly to the selected location
+    map.current.flyTo({
+      center: coordinates,
+      zoom: 15,
+      essential: true
+    });
+    
+    // Add a temporary marker
+    addTemporaryMarker(coordinates, name);
+  };
+  
+  const addTemporaryMarker = async (coords: [number, number], name: string) => {
+    if (!map.current) return;
+    
+    const mapboxgl = await import('mapbox-gl');
+    
+    // Remove existing temporary marker if any
+    const existingMarker = (map.current as any).tempMarker;
+    if (existingMarker) {
+      existingMarker.remove();
+    }
+    
+    // Create new marker
+    const el = document.createElement('div');
+    el.className = 'temp-location-marker';
+    el.style.width = '20px';
+    el.style.height = '20px';
+    el.style.borderRadius = '50%';
+    el.style.backgroundColor = '#00ff88';
+    el.style.border = '2px solid white';
+    el.style.boxShadow = '0 0 10px rgba(0, 255, 136, 0.5)';
+    
+    const marker = new mapboxgl.default.Marker(el)
+      .setLngLat(coords)
+      .addTo(map.current);
+    
+    // Store marker reference and auto-remove after 5 seconds
+    (map.current as any).tempMarker = marker;
+    setTimeout(() => {
+      if ((map.current as any).tempMarker === marker) {
+        marker.remove();
+        delete (map.current as any).tempMarker;
+      }
+    }, 5000);
+  };
+
   const clearNavigationRoute = () => {
     if (!map.current) return;
     
@@ -697,6 +749,15 @@ export function RacingMap({
                 title="Route Leaderboard"
               >
                 <Trophy className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowNavigationSearch(!showNavigationSearch)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showNavigationSearch ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Search & Navigate"
+              >
+                <Search className="h-5 w-5" />
               </Button>
             </div>
 
@@ -889,6 +950,37 @@ export function RacingMap({
         <RouteLeaderboard 
           onClose={() => setShowLeaderboard(false)}
         />
+      )}
+      
+      {/* Navigation Search Panel */}
+      {showNavigationSearch && (
+        <div className="absolute top-4 right-4 z-30 w-80 max-w-[calc(100vw-32px)]">
+          <div className="bg-racing-dark/95 backdrop-blur-md rounded-xl border border-racing-steel/30 p-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Search className="h-5 w-5 text-racing-blue" />
+                Search & Navigate
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowNavigationSearch(false)}
+                className="h-8 w-8 text-white/70 hover:text-white hover:bg-racing-steel/20"
+              >
+                ×
+              </Button>
+            </div>
+            
+            <NavigationSearch
+              map={map.current}
+              onLocationSelect={handleLocationSelect}
+              onNavigationStart={(start, end) => {
+                calculateNavigationRoute(start, end);
+                setShowNavigationSearch(false);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
