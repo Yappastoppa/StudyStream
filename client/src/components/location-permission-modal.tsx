@@ -40,9 +40,23 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
     }
   }, [geoError]);
 
-  const handleRequestLocation = () => {
+  const handleRequestLocation = async () => {
     setError('');
-    getCurrentPosition();
+    try {
+      const permission = await getCurrentPosition();
+      if (permission === 'granted' || permission === 'denied') {
+        // Either real GPS worked or simulation started - close modal
+        setTimeout(() => {
+          onPermissionGranted();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Location request failed:', error);
+      // Still close modal and use simulation
+      setTimeout(() => {
+        onPermissionGranted();
+      }, 1000);
+    }
   };
 
   if (!isOpen) return null;
