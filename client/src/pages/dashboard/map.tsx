@@ -355,7 +355,19 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
         className="absolute bottom-6 left-6 z-20"
       />
 
-      {/* Action Buttons (Right Side) */}
+      {/* Left Side Action Buttons */}
+      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20">
+        <ActionButtons
+          isGhostMode={isGhostMode}
+          onGhostModeToggle={handleGhostModeToggle}
+          onReportAlert={() => setIsReportModalOpen(true)}
+          onCreateEvent={() => setIsEventModalOpen(true)}
+          onShowUserList={() => setIsUserListModalOpen(true)}
+          side="left"
+        />
+      </div>
+
+      {/* Right Side Action Buttons */}
       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">
         <ActionButtons
           isGhostMode={isGhostMode}
@@ -363,6 +375,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
           onReportAlert={() => setIsReportModalOpen(true)}
           onCreateEvent={() => setIsEventModalOpen(true)}
           onShowUserList={() => setIsUserListModalOpen(true)}
+          side="right"
         />
       </div>
 

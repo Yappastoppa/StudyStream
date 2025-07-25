@@ -7,6 +7,7 @@ interface ActionButtonsProps {
   onReportAlert: () => void;
   onCreateEvent: () => void;
   onShowUserList: () => void;
+  side?: 'left' | 'right';
   className?: string;
 }
 
@@ -16,9 +17,11 @@ export function ActionButtons({
   onReportAlert,
   onCreateEvent,
   onShowUserList,
+  side = 'left',
   className = ""
 }: ActionButtonsProps) {
-  return (
+  // Left side gets primary actions
+  const leftButtons = (
     <div className={`flex flex-col space-y-3 ${className}`}>
       {/* Ghost Mode Toggle */}
       <Button
@@ -32,7 +35,7 @@ export function ActionButtons({
       >
         <Ghost className="w-5 h-5 text-white" />
       </Button>
-      
+
       {/* Report Alert */}
       <Button
         onClick={onReportAlert}
@@ -41,7 +44,12 @@ export function ActionButtons({
       >
         <AlertTriangle className="w-5 h-5 text-racing-amber" />
       </Button>
-      
+    </div>
+  );
+
+  // Right side gets secondary actions
+  const rightButtons = (
+    <div className={`flex flex-col space-y-3 ${className}`}>
       {/* Create Event */}
       <Button
         onClick={onCreateEvent}
@@ -50,8 +58,8 @@ export function ActionButtons({
       >
         <Flag className="w-5 h-5 text-racing-red" />
       </Button>
-      
-      {/* User List */}
+
+      {/* Show User List */}
       <Button
         onClick={onShowUserList}
         size="sm"
@@ -61,4 +69,6 @@ export function ActionButtons({
       </Button>
     </div>
   );
+
+  return side === 'left' ? leftButtons : rightButtons;
 }
