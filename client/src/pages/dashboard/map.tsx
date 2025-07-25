@@ -340,6 +340,17 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
         className="absolute bottom-4 left-4 z-20"
       />
 
+      {/* Action Buttons (Right Side) */}
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">
+        <ActionButtons
+          isGhostMode={isGhostMode}
+          onGhostModeToggle={handleGhostModeToggle}
+          onReportAlert={() => setIsReportModalOpen(true)}
+          onCreateEvent={() => setIsEventModalOpen(true)}
+          onShowUserList={() => setIsUserListModalOpen(true)}
+        />
+      </div>
+
       {/* Minimal Center Map Button - Bottom Center */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
         <Button
