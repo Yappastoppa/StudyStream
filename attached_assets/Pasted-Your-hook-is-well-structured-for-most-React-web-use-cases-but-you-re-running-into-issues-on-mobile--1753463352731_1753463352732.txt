@@ -1,0 +1,69 @@
+Your hook is well-structured for most React web use cases, but you’re running into issues on mobile browsers (especially inside Replit Preview) where:
+	•	The location prompt doesn’t appear
+	•	The map keeps recentering/jittering
+	•	The route polyline isn’t showing
+
+Here’s an improved prompt for your agent, specifically referencing your custom hook and real device use:
+
+⸻
+
+Prompt for Agent:
+
+I’m using a custom React hook (useGeolocation, see below) to handle user location in my navigation app. I need help addressing these issues that only show up when testing on real phones (not just in Replit Preview):
+	1.	Location Permission Prompt:
+	•	When running in Replit Preview, the browser never asks for location permission and geolocation fails.
+	•	If I open the site in Safari/Chrome, it skips the prompt and just instantly centers on my location.
+	•	I want it to ALWAYS ask the user to allow/deny location access, and show a clear error or message if denied or
+
+Great question! Your custom useGeolocation hook is solid, but the issues you’re facing are a combo of browser restrictions, Replit Preview quirks, and possibly too-aggressive recentering/updating logic in your map code (not shown, but the problem sounds familiar).
+
+Let’s break down each issue and solution:
+
+⸻
+
+1. Location Permission Prompt Not Appearing
+
+Why?
+	•	Replit Preview and some in-app browsers sandbox or block geolocation APIs.
+	•	Some browsers will only prompt for geolocation if your site is served over HTTPS and in a user gesture (like a button click), NOT automatically on load.
+	•	If location permission was previously denied, the prompt will NOT reappear until the user manually changes their browser settings.
+
+How to Fix:
+	•	Do not auto-trigger geolocation on load; instead, show a “Share Location” button and call getCurrentPosition only on user tap. Browsers require a “user gesture” to show the prompt!
+	•	Check permission status with navigator.permissions.query (as you’re doing), but also handle prompt state and visually instruct the user to update settings if denied.
+	•	Show a fallback screen with step-by-step instructions if permission is denied, rather than endlessly retrying.
+
+Example (pseudo-code):
+
+// On initial load, show "Share Location" button
+<Button onClick={getCurrentPosition}>Share My Location</Button>
+
+
+⸻
+
+2. Glitchy Map Re-centering (Map Keeps Jumping or Refreshing)
+
+Why?
+	•	Every GPS update triggers a map center/zoom, which looks glitchy if frequent, or if minor changes (GPS jitter) are constantly “recentering.”
+	•	Multiple components may be triggering map center independently.
+
+How to Fix:
+	•	Only recenter the map when:
+a) User starts navigation
+b) User taps a “Center” button
+c) The position jumps by a significant threshold (e.g., >100m)
+	•	During navigation, let the map “follow” the user, but throttle updates (e.g., once per second or only on significant changes).
+	•	Debounce/throttle the actual recentering code.
+	•	Ignore minor GPS drift when the user is stopped (speed < 2km/h).
+
+Example:
+
+// Pseudocode for throttling map center:
+const [lastCenter, setLastCenter] = useState<Date>(null);
+
+useEffect(() => {
+  if (shouldRecenter && (!lastCenter || Date.now() - lastCenter > 1000)) {
+    map.setCenter([state.lng, state.lat]);
+    setLastCenter(Date.now());
+  }
+}, [state.lat, state.lng, shouldRe
