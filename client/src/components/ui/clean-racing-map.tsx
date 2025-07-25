@@ -33,13 +33,15 @@ export function CleanRacingMap({
   
   // Live Navigation State
   const [isDriverView, setIsDriverView] = useState(true);
-  const [isAutoCenter, setIsAutoCenter] = useState(true);
+  const [isAutoCenter, setIsAutoCenter] = useState(false); // Start with auto-center OFF to prevent loops
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [userHeading, setUserHeading] = useState<number>(0);
   const [userSpeed, setUserSpeed] = useState<number>(0);
   const [isGPSLost, setIsGPSLost] = useState(false);
   const [showCenterButton, setShowCenterButton] = useState(false);
   const [isRerouting, setIsRerouting] = useState(false);
+  const [lastCenterTime, setLastCenterTime] = useState(0);
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
   
   // UI state
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
@@ -72,6 +74,8 @@ export function CleanRacingMap({
     mapboxToken: MAPBOX_TOKEN,
     map: map.current,
     onLocationUpdate: (location: [number, number], speed?: number, heading?: number) => {
+      console.log('📍 GPS Update:', location, 'Speed:', speed, 'Heading:', heading);
+      
       setUserLocation(location);
       setUserSpeed(speed || 0);
       setUserHeading(heading || 0);
@@ -80,19 +84,27 @@ export function CleanRacingMap({
       // Update car marker position and rotation
       updateCarMarker(location, heading || 0);
       
-      // Auto-center map if navigation is active and auto-center is enabled
-      if (isNavigating && isAutoCenter && map.current) {
+      // Only auto-center if user explicitly enabled following AND enough time has passed
+      const now = Date.now();
+      const timeSinceLastCenter = now - lastCenterTime;
+      const MIN_CENTER_INTERVAL = 3000; // 3 seconds minimum between auto-centers
+      
+      if (isFollowingUser && map.current && timeSinceLastCenter > MIN_CENTER_INTERVAL) {
+        console.log('🎯 Auto-centering on user location');
         const zoom = isDriverView ? 17 : 14;
         const pitch = isDriverView ? 60 : 0;
         
-        map.current.easeTo({
+        map.current.flyTo({
           center: location,
           bearing: heading || 0,
           zoom: zoom,
           pitch: pitch,
-          duration: 600,
+          speed: 0.5, // Slower movement
+          curve: 1,
           essential: true
         });
+        
+        setLastCenterTime(now);
       }
       
       // Check for off-route detection
@@ -105,59 +117,13 @@ export function CleanRacingMap({
     onRouteAlternatives: (routes) => {
       setShowAlternatives(true);
     },
-    onNavigationStart: (route) => {
-      // Add route polyline to map when navigation starts
-      addRoutePolylineToMap(route);
-    }
+
   });
 
-  // Enhanced GPS permission check with mobile-friendly prompting
+  // Don't auto-check location on mount - wait for user action to prevent loops
   useEffect(() => {
-    const checkLocationPermission = async () => {
-      if (!navigator.geolocation) {
-        console.log('❌ Geolocation not supported');
-        setShowLocationModal(true);
-        return;
-      }
-
-      // For mobile devices, be more aggressive about asking for permission
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      try {
-        // Try to get current position to test permission
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: isMobile ? 10000 : 5000, // Longer timeout for mobile
-            maximumAge: 30000 // Shorter max age for more accurate location
-          });
-        });
-        
-        // Cache last known location
-        const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
-        setUserLocation(coords);
-        setHasLocationPermission(true);
-        setShowLocationModal(false);
-        
-        console.log('✅ Location permission already granted', coords);
-      } catch (error: any) {
-        console.log('❌ Location permission required:', error.message);
-        
-        // Show specific error messages for mobile users
-        if (error.code === 1) { // PERMISSION_DENIED
-          console.log('🔄 Permission denied, showing permission modal');
-        } else if (error.code === 2) { // POSITION_UNAVAILABLE
-          console.log('📍 Position unavailable, showing permission modal');
-        } else if (error.code === 3) { // TIMEOUT
-          console.log('⏰ Location timeout, showing permission modal');
-        }
-        
-        setShowLocationModal(true);
-      }
-    };
-
-    // Immediate check on mount, especially important for mobile
-    checkLocationPermission();
+    // Only check if user explicitly wants to use location features
+    console.log('🔍 Component mounted, waiting for user to request location');
   }, []);
 
   // Location permission handler
@@ -165,6 +131,26 @@ export function CleanRacingMap({
     setHasLocationPermission(true);
     setShowLocationModal(false);
     toast.success("Location access enabled!");
+  };
+
+  // Manual center button - user controlled
+  const handleCenterOnUser = () => {
+    if (userLocation && map.current) {
+      console.log('🎯 User manually centered on location');
+      setIsFollowingUser(true); // Enable following mode
+      
+      map.current.flyTo({
+        center: userLocation,
+        bearing: userHeading,
+        zoom: isDriverView ? 17 : 14,
+        pitch: isDriverView ? 60 : 0,
+        speed: 1.2,
+        essential: true
+      });
+      
+      setLastCenterTime(Date.now());
+      setShowCenterButton(false);
+    }
   };
 
   // Off-route detection function
@@ -506,70 +492,8 @@ export function CleanRacingMap({
     };
   }, [hasLocationPermission, userLocation]);
 
-  // Continuous GPS tracking - optimized for smooth following
-  useEffect(() => {
-    if (!hasLocationPermission) return;
-
-    let watchId: number | null = null;
-    let lastUpdateTime = 0;
-    const UPDATE_THROTTLE = 1000; // Only update map every 1 second for smoother experience
-
-    const startTracking = () => {
-      if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(
-          (position) => {
-            const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
-            const speed = position.coords.speed || 0;
-            const heading = position.coords.heading || 0;
-            const now = Date.now();
-            
-            setUserLocation(coords);
-            setUserSpeed(speed);
-            setUserHeading(heading);
-            setIsGPSLost(false);
-            
-            updateCarMarker(coords, heading);
-            
-            // Smooth auto-center with throttling to prevent glitchy refreshes
-            if (isNavigating && isAutoCenter && map.current && (now - lastUpdateTime > UPDATE_THROTTLE)) {
-              const zoom = isDriverView ? 17 : 14;
-              const pitch = isDriverView ? 60 : 0;
-              
-              // Use flyTo for smoother camera movement instead of easeTo
-              map.current.flyTo({
-                center: coords,
-                bearing: heading,
-                zoom: zoom,
-                pitch: pitch,
-                speed: 0.8, // Slower, smoother movement
-                curve: 1,
-                essential: true
-              });
-              
-              lastUpdateTime = now;
-            }
-          },
-          (error) => {
-            console.error('GPS Error:', error);
-            setIsGPSLost(true);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 2000
-          }
-        );
-      }
-    };
-
-    startTracking();
-
-    return () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [hasLocationPermission, isNavigating, isAutoCenter, isDriverView]);
+  // Remove the duplicate GPS tracking - it's handled by the navigation hook
+  // This was causing the infinite loop by having two GPS watchers running!
 
   return (
     <ErrorBoundary>
@@ -755,6 +679,37 @@ export function CleanRacingMap({
             onPlaceSearch={searchPlaces}
           />
         )}
+
+        {/* Center Button - manual user control */}
+        {hasLocationPermission && userLocation && (
+          <button
+            onClick={handleCenterOnUser}
+            className="absolute bottom-24 right-4 bg-racing-blue hover:bg-racing-blue/80 text-white p-3 rounded-full shadow-lg z-20 transition-all"
+          >
+            <Crosshair className="h-6 w-6" />
+          </button>
+        )}
+
+        {/* Follow User Toggle */}
+        {hasLocationPermission && userLocation && (
+          <button
+            onClick={() => setIsFollowingUser(!isFollowingUser)}
+            className={`absolute bottom-36 right-4 p-3 rounded-full shadow-lg z-20 transition-all ${
+              isFollowingUser 
+                ? 'bg-green-500 hover:bg-green-600 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            title={isFollowingUser ? 'Following enabled' : 'Click to follow location'}
+          >
+            <Flag className="h-6 w-6" />
+          </button>
+        )}
+
+        {/* Location Permission Modal */}
+        <LocationPermissionModal
+          isOpen={showLocationModal}
+          onPermissionGranted={handleLocationPermissionGranted}
+        />
       </div>
     </ErrorBoundary>
   );

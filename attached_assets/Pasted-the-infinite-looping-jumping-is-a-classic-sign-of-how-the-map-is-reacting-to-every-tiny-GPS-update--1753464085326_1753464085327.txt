@@ -1,0 +1,34 @@
+the infinite looping/jumping is a classic sign of how the map is reacting to every tiny GPS update, or is stuck in a permission-denied fallback, or the position isn’t being “locked” after initial acquisition. This is made worse if your code to pan/zoom or update the route is directly tied to every state change in your geolocation hook.
+
+Here’s a quick diagnosis + actionable steps for your agent or for you:
+
+⸻
+
+Prompt for Agent (use this to explain your bug):
+
+⸻
+
+I’m using a custom React hook (useGeolocation) to get the user’s real-time position for my navigation app. On phones, after sharing location, the map keeps refreshing, looping, or “jumping” back to my position, and the route does not display or update correctly.
+	•	The bug only happens after sharing location (either on initial load or after I tap the “Share Location” button).
+	•	The page does not always prompt for location; sometimes it just jumps or stays stuck, possibly due to previous browser permission state.
+	•	In the UI, it looks like the app is constantly re-centering and never “settles down.”
+
+What I need:
+	1.	Stable User Location: After I tap “Share Location,” the map should center only once or follow the user smoothly, not keep re-centering on every slight position update.
+	2.	Proper Permission Handling: The app should always show the browser location prompt on user action, display a clear error if denied, and never get stuck in a loop.
+	3.	Route Display: Once the route is set, it should show the polyline from current position to destination, and update as the user moves.
+
+What should I check or change in my hook or map logic to fix these looping/recentering/route bugs on mobile browsers? Please provide example code for handling map centering and permission prompts properly.
+
+⸻
+
+Quick Tips for You (before the agent replies):
+	1.	Don’t auto-center on every update:
+	•	Use a flag like isFollowingUser and only recenter if true or if user explicitly taps “Center.”
+	•	Debounce/limit recentering with setTimeout or only on meaningful GPS moves.
+	2.	Only request location on user action:
+	•	Don’t run getCurrentPosition on mount—wait for a button click.
+	3.	Handle permission changes:
+	•	If denied, show an error and a button: “Enable Location in Browser Settings.”
+	4.	Debug logging:
+	•	Add console.log for every time your map moves, and for each GPS update, to catch unnecessary re-renders or double-calls.
