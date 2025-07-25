@@ -49,6 +49,7 @@ export function Map(props: MapProps) {
 
   // Debug token info
   useEffect(() => {
+    console.log("Mapbox token at runtime:", import.meta.env.VITE_MAPBOX_TOKEN);
     console.log('🗺️ Mapbox Token Debug:', {
       hasToken: !!MAPBOX_TOKEN,
       tokenLength: MAPBOX_TOKEN?.length,
