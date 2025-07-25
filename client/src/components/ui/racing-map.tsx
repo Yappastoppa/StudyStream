@@ -16,9 +16,7 @@ import {
   Layers,
   Trophy,
   Pencil,
-  Activity,
-  Search,
-  Users
+  Activity
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
@@ -27,8 +25,6 @@ import { RouteCreator } from '@/components/racing/route-creator';
 import { SimulationMode } from '@/components/racing/simulation-mode';
 import { RouteHeatmap } from '@/components/racing/route-heatmap';
 import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
-import { AddressSearch } from '@/components/racing/address-search';
-import { NearbyDrivers } from '@/components/racing/nearby-drivers';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -68,8 +64,6 @@ export function RacingMap({
   const [showSimulation, setShowSimulation] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showAddressSearch, setShowAddressSearch] = useState(false);
-  const [showNearbyDrivers, setShowNearbyDrivers] = useState(false);
 
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -555,186 +549,173 @@ export function RacingMap({
   };
 
   return (
-    <div className="absolute inset-0 bg-racing-dark overflow-hidden">
-      {/* Map Container - Full Background */}
-      <div ref={mapContainer} className="absolute inset-0" />
-      
-      {/* Header Bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 bg-black/80 backdrop-blur-sm border-b border-racing-steel/30">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-white">GHOSTRACER</h1>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
-              <span className="text-sm text-racing-green">ONLINE</span>
+    <div className={`relative ${className}`}>
+      {/* Map container */}
+      <div 
+        ref={mapContainer} 
+        className="w-full h-full" 
+        style={{ minHeight: '400px' }}
+      />
+
+      {/* Racing-style UI overlay */}
+      {isMapLoaded && (
+        <>
+          {/* Map controls - vertical stack with proper spacing and overflow handling */}
+          <div className="absolute right-4 top-1/4 flex flex-col gap-4 z-10 max-h-[70vh] overflow-y-auto pr-2 pb-4">
+            {/* Map style buttons */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleMapStyle('dark')}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${mapStyle === 'dark' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Dark Mode"
+              >
+                <Layers className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleMapStyle('satellite')}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${mapStyle === 'satellite' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Satellite View"
+              >
+                <Satellite className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleMapStyle('navigation')}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${mapStyle === 'navigation' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Navigation View"
+              >
+                <Navigation className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Toggle controls */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTraffic}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showTraffic ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Toggle Traffic"
+              >
+                <Zap className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleDensity}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showDensity ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Toggle Density"
+              >
+                {showDensity ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+              </Button>
+            </div>
+
+            {/* Quick actions */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={zoomToOverview}
+                className="h-12 w-12 hover:bg-racing-blue/20 text-white/70 hover:text-white transition-all duration-200"
+                title="Overview"
+              >
+                <ZoomOut className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsDrawingRoute(!isDrawingRoute)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${isDrawingRoute ? 'bg-racing-green/30 text-racing-green' : 'text-white/70 hover:text-white'}`}
+                title="Draw Route"
+              >
+                <Route className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setNavigationMode(!navigationMode);
+                  if (navigationMode) {
+                    clearNavigationRoute();
+                  }
+                }}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${navigationMode ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
+                title="Navigation Mode"
+              >
+                <MapPin className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Overlay controls */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowOverlays(!showOverlays)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showOverlays ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70 hover:text-white'}`}
+                title="Route Overlays"
+              >
+                <Crosshair className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAIRoutes(!showAIRoutes)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showAIRoutes ? 'bg-racing-orange/30 text-racing-orange' : 'text-white/70 hover:text-white'}`}
+                title="AI Race Routes"
+              >
+                <Route className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowRouteCreator(!showRouteCreator)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showRouteCreator ? 'bg-racing-green/30 text-racing-green' : 'text-white/70 hover:text-white'}`}
+                title="Create Route"
+              >
+                <Pencil className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowHeatmap(!showHeatmap)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showHeatmap ? 'bg-racing-red/30 text-racing-red' : 'text-white/70 hover:text-white'}`}
+                title="Activity Heatmap"
+              >
+                <Activity className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowLeaderboard(!showLeaderboard)}
+                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showLeaderboard ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70 hover:text-white'}`}
+                title="Route Leaderboard"
+              >
+                <Trophy className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Mobile responsive - show fewer buttons on small screens */}
+            <div className="sm:hidden bg-black/70 backdrop-blur-sm rounded-lg p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 hover:bg-racing-blue/20 text-white/70 hover:text-white transition-all duration-200"
+                title="More Options"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                </div>
+              </Button>
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-xs text-gray-400">Range</div>
-              <div className="text-sm text-white">2km</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Left Side Controls - Action Buttons */}
-      {isMapLoaded && (
-        <div className="absolute left-4 top-0 h-full flex flex-col justify-between items-start py-20 pointer-events-none z-40">
-          {/* Primary Actions */}
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowAddressSearch(!showAddressSearch)}
-              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showAddressSearch ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Search Address"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsDrawingRoute(!isDrawingRoute)}
-              className={`h-12 w-12 hover:bg-racing-green/20 pointer-events-auto ${isDrawingRoute ? 'bg-racing-green/30 text-racing-green' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Draw Route"
-            >
-              <Route className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setNavigationMode(!navigationMode);
-                if (navigationMode) {
-                  clearNavigationRoute();
-                }
-              }}
-              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${navigationMode ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Navigation Mode"
-            >
-              <MapPin className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Map Controls */}
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={zoomToOverview}
-              className="h-12 w-12 hover:bg-racing-blue/20 text-white/70 hover:text-white pointer-events-auto bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg"
-              title="Overview"
-            >
-              <ZoomOut className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTraffic}
-              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showTraffic ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Toggle Traffic"
-            >
-              <Zap className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleDensity}
-              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showDensity ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Toggle Density"
-            >
-              {showDensity ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Right Side Controls - Features & Settings */}
-      {isMapLoaded && (
-        <div className="absolute right-4 top-0 h-full flex flex-col justify-between items-end py-20 pointer-events-none z-40">
-          {/* Feature Panels */}
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowAIRoutes(!showAIRoutes)}
-              className={`h-12 w-12 hover:bg-racing-orange/20 pointer-events-auto ${showAIRoutes ? 'bg-racing-orange/30 text-racing-orange' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="AI Race Routes"
-            >
-              <Route className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowRouteCreator(!showRouteCreator)}
-              className={`h-12 w-12 hover:bg-racing-green/20 pointer-events-auto ${showRouteCreator ? 'bg-racing-green/30 text-racing-green' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Create Route"
-            >
-              <Pencil className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`h-12 w-12 hover:bg-racing-red/20 pointer-events-auto ${showHeatmap ? 'bg-racing-red/30 text-racing-red' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Activity Heatmap"
-            >
-              <Activity className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowLeaderboard(!showLeaderboard)}
-              className={`h-12 w-12 hover:bg-racing-yellow/20 pointer-events-auto ${showLeaderboard ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Route Leaderboard"
-            >
-              <Trophy className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Settings & Social */}
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowNearbyDrivers(!showNearbyDrivers)}
-              className={`h-12 w-12 hover:bg-purple-600/20 pointer-events-auto ${showNearbyDrivers ? 'bg-purple-600/30 text-purple-400' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Nearby Drivers"
-            >
-              <Users className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => toggleMapStyle('dark')}
-              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${mapStyle === 'dark' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Map Style"
-            >
-              <Layers className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowOverlays(!showOverlays)}
-              className={`h-12 w-12 hover:bg-racing-yellow/20 pointer-events-auto ${showOverlays ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70 hover:text-white'} bg-black/70 backdrop-blur-md border border-white/10 rounded-lg shadow-lg`}
-              title="Route Overlays"
-            >
-              <Crosshair className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      )}
 
           {/* Route drawing instructions - minimal banner */}
           {isDrawingRoute && (
@@ -822,7 +803,10 @@ export function RacingMap({
         </>
       )}
 
-      
+      {/* Floating Action Buttons - Right side */}
+      <div className="absolute right-4 top-16 flex flex-col gap-4 z-40 max-h-[80vh] overflow-y-auto pt-4 pb-8 pr-2">
+        
+      </div>
 
       {/* Route Overlays */}
       <RouteOverlays 
@@ -865,27 +849,6 @@ export function RacingMap({
       {showLeaderboard && (
         <RouteLeaderboard 
           onClose={() => setShowLeaderboard(false)}
-        />
-      )}
-      
-      {/* Address Search */}
-      {showAddressSearch && (
-        <AddressSearch 
-          map={map.current}
-          onLocationSelect={(location, name) => {
-            console.log('Selected location:', location, name);
-            setShowAddressSearch(false);
-          }}
-          onClose={() => setShowAddressSearch(false)}
-        />
-      )}
-      
-      {/* Nearby Drivers */}
-      {showNearbyDrivers && (
-        <NearbyDrivers 
-          map={map.current}
-          currentLocation={center}
-          onClose={() => setShowNearbyDrivers(false)}
         />
       )}
     </div>

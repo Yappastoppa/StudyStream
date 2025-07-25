@@ -34,7 +34,7 @@ interface NearbyUser {
 export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   console.log("🔥 MAP PAGE COMPONENT LOADED!");
   const { toast } = useToast();
-
+  
   // UI State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGhostMode, setIsGhostMode] = useState(false);
@@ -45,7 +45,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   const [isUserListModalOpen, setIsUserListModalOpen] = useState(false);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [countdownEvent, setCountdownEvent] = useState<any>(null);
-
+  
   // Data State
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -156,7 +156,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
       const interval = setInterval(() => {
         getNearbyUsers(lat, lng, parseInt(shareRadius));
       }, 5000);
-
+      
       return () => clearInterval(interval);
     }
   }, [lat, lng, isConnected, shareRadius, getNearbyUsers]);
@@ -165,7 +165,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
     const newGhostMode = !isGhostMode;
     setIsGhostMode(newGhostMode);
     toggleGhostMode(newGhostMode);
-
+    
     toast({
       title: newGhostMode ? "Ghost Mode Enabled" : "Ghost Mode Disabled",
       description: newGhostMode 
@@ -237,7 +237,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
     const targetUser = nearbyUsers.find(u => u.id === userId);
     if (targetUser && lat && lng) {
       const startTime = new Date(Date.now() + 30000); // 30 seconds from now
-
+      
       createEvent({
         eventType: "sprint",
         startTime,
@@ -287,17 +287,11 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
     });
   }
 
-  const [totalDistance, setTotalDistance] = useState(0);
-
-  useEffect(() => {
-    setTotalDistance(distanceTraveled / 1609.34); // meters to miles
-  }, [distanceTraveled]);
-
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
       {/* Enhanced Racing Map */}
       <RacingMap
-        center={lat && lng ? [lng, lat] : undefined}
+        center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}
         zoom={15}
         className="absolute inset-0"
         savedRoutes={savedRoutes}
@@ -340,7 +334,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
                 </span>
               )}
             </div>
-
+            
             {/* Menu button only */}
             <Button
               onClick={() => setIsMenuOpen(true)}
@@ -354,36 +348,12 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
         </div>
       </div>
 
-      {/* Compact Speed HUD - Bottom Left */}
-      <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
-        <div className="bg-black/70 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl min-w-[120px]">
-          {/* Speed Display */}
-          <div className="flex flex-col items-center">
-            <div className="text-3xl font-bold text-racing-green mb-1">
-              {Math.round(speed)}
-            </div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider">MPH</div>
-          </div>
-
-          {/* Distance */}
-          <div className="flex items-center justify-center mt-2 pt-2 border-t border-white/10">
-            <div className="text-center">
-              <div className="text-sm text-white">{totalDistance.toFixed(1)} mi</div>
-              <div className="text-xs text-gray-500">Total</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Status Indicator - Bottom Right */}
-      <div className="absolute bottom-6 right-6 z-30 pointer-events-none">
-        <div className="bg-black/70 backdrop-blur-md rounded-full px-4 py-2 border border-white/10 shadow-lg">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
-            <span className="text-xs text-racing-green font-medium">LIVE</span>
-          </div>
-        </div>
-      </div>
+      {/* Speed HUD (Bottom Left with proper spacing) */}
+      <SpeedHud
+        currentSpeed={speed || 0}
+        distanceTraveled={distanceTraveled}
+        className="absolute bottom-6 left-6 z-20"
+      />
 
       {/* Action Buttons (Right Side) */}
       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">
@@ -416,7 +386,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
                 </Select>
               </div>
             </div>
-
+            
             {/* Center Action */}
             <Button
               onClick={centerMap}
@@ -424,7 +394,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
             >
               CENTER MAP
             </Button>
-
+            
             {/* Share Radius */}
             <div className="flex items-center space-x-2">
               <span className="text-sm text-racing-gray">Range:</span>
