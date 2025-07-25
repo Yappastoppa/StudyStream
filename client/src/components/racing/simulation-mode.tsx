@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Car, AlertTriangle, Users, Zap } from 'lucide-react';
@@ -30,12 +30,12 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
   const [simulatedRacers, setSimulatedRacers] = useState<SimulatedRacer[]>([]);
   const [simulatedAlerts, setSimulatedAlerts] = useState<SimulatedAlert[]>([]);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-  
+
   // Generate random racers in NJ area
   const generateRacers = (): SimulatedRacer[] => {
     const racers: SimulatedRacer[] = [];
     const names = ['Ghost_Rider', 'Night_Hawk', 'Speed_Demon', 'Shadow_Racer', 'Turbo_King'];
-    
+
     for (let i = 0; i < 5; i++) {
       racers.push({
         id: `sim-racer-${i}`,
@@ -46,15 +46,15 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         username: `${names[i]}_${Math.floor(Math.random() * 999)}`
       });
     }
-    
+
     return racers;
   };
-  
+
   // Generate random alerts
   const generateAlerts = (): SimulatedAlert[] => {
     const alerts: SimulatedAlert[] = [];
     const types: ('camera' | 'police' | 'hazard')[] = ['camera', 'police', 'hazard'];
-    
+
     for (let i = 0; i < 8; i++) {
       alerts.push({
         id: `sim-alert-${i}`,
@@ -64,10 +64,10 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         timestamp: new Date()
       });
     }
-    
+
     return alerts;
   };
-  
+
   useEffect(() => {
     if (!map || !isActive) {
       // Clean up when deactivated
@@ -75,7 +75,7 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         clearInterval(intervalId);
         setIntervalId(null);
       }
-      
+
       // Remove all simulation markers
       simulatedRacers.forEach(racer => {
         const marker = (map as any)[`marker-${racer.id}`];
@@ -84,7 +84,7 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
           delete (map as any)[`marker-${racer.id}`];
         }
       });
-      
+
       simulatedAlerts.forEach(alert => {
         const marker = (map as any)[`marker-${alert.id}`];
         if (marker) {
@@ -92,23 +92,23 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
           delete (map as any)[`marker-${alert.id}`];
         }
       });
-      
+
       setSimulatedRacers([]);
       setSimulatedAlerts([]);
-      
+
       return;
     }
-    
+
     // Initialize simulation
     const racers = generateRacers();
     const alerts = generateAlerts();
     setSimulatedRacers(racers);
     setSimulatedAlerts(alerts);
-    
+
     // Add markers to map
     const addMarkers = async () => {
       const mapboxgl = await import('mapbox-gl');
-      
+
       // Add racer markers
       racers.forEach(racer => {
         const el = document.createElement('div');
@@ -123,7 +123,7 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         el.style.justifyContent = 'center';
         el.style.boxShadow = '0 0 10px rgba(0,255,136,0.8)';
         el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="black"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
-        
+
         const marker = new mapboxgl.default.Marker(el)
           .setLngLat([racer.lng, racer.lat])
           .setPopup(
@@ -137,10 +137,10 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
               `)
           )
           .addTo(map);
-        
+
         (map as any)[`marker-${racer.id}`] = marker;
       });
-      
+
       // Add alert markers
       alerts.forEach(alert => {
         const el = document.createElement('div');
@@ -152,7 +152,7 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         el.style.alignItems = 'center';
         el.style.justifyContent = 'center';
         el.style.cursor = 'pointer';
-        
+
         switch (alert.type) {
           case 'camera':
             el.style.backgroundColor = '#ff0033';
@@ -167,7 +167,7 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
             el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>';
             break;
         }
-        
+
         const marker = new mapboxgl.default.Marker(el)
           .setLngLat([alert.lng, alert.lat])
           .setPopup(
@@ -180,13 +180,13 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
               `)
           )
           .addTo(map);
-        
+
         (map as any)[`marker-${alert.id}`] = marker;
       });
     };
-    
+
     addMarkers();
-    
+
     // Update positions periodically
     const id = setInterval(() => {
       setSimulatedRacers(prev => {
@@ -195,22 +195,22 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
           const speedKmh = racer.speed * 1.60934;
           const distance = (speedKmh / 3600) * 2; // 2 seconds of movement
           const headingRad = racer.heading * Math.PI / 180;
-          
+
           const newLat = racer.lat + (distance / 111) * Math.cos(headingRad);
           const newLng = racer.lng + (distance / (111 * Math.cos(racer.lat * Math.PI / 180))) * Math.sin(headingRad);
-          
+
           // Update heading randomly
           const newHeading = (racer.heading + (Math.random() - 0.5) * 20 + 360) % 360;
-          
+
           // Update speed randomly
           const newSpeed = Math.max(60, Math.min(140, racer.speed + (Math.random() - 0.5) * 10));
-          
+
           // Update marker position
           const marker = (map as any)[`marker-${racer.id}`];
           if (marker) {
             marker.setLngLat([newLng, newLat]);
           }
-          
+
           return {
             ...racer,
             lat: newLat,
@@ -221,16 +221,16 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         });
       });
     }, 2000);
-    
+
     setIntervalId(id);
-    
+
     return () => {
       if (id) {
         clearInterval(id);
       }
     };
   }, [map, isActive]);
-  
+
   return (
     <div className="absolute top-20 right-6 z-20">
       <Button
@@ -244,7 +244,7 @@ export function SimulationMode({ map, isActive, onToggle }: SimulationModeProps)
         <Zap className="w-4 h-4 mr-2" />
         Simulation Mode
       </Button>
-      
+
       {isActive && (
         <div className="mt-2 bg-black/80 backdrop-blur-sm rounded-lg p-3">
           <h4 className="text-white text-sm font-medium mb-2">Active Simulation</h4>
