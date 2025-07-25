@@ -54,13 +54,20 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
           <div className="mx-auto mb-4 p-3 bg-racing-blue/20 rounded-full w-fit">
             <MapPin className="h-8 w-8 text-racing-blue" />
           </div>
-          <CardTitle className="text-xl text-white">Enable Location Services</CardTitle>
+          <CardTitle className="text-xl text-white">Location Required for Navigation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-white/80 text-center">
-            GhostRacer requires your location to provide live navigation and real-time tracking. 
-            Please enable location services to continue.
+            Real-time navigation requires precise GPS location access. 
+            Please allow location permissions when your browser prompts you.
           </p>
+          
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+            <p className="text-yellow-400 text-sm font-medium mb-1">📱 On Mobile:</p>
+            <p className="text-yellow-300 text-xs">
+              If you don't see a permission prompt, check your browser settings to enable location for this site.
+            </p>
+          </div>
           
           {error && (
             <div className="flex items-start space-x-2 p-3 bg-red-900/30 border border-red-500/50 rounded">
@@ -80,7 +87,7 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
                 <span>Getting Location...</span>
               </div>
             ) : (
-              'Enable Location'
+              'Allow Location Access'
             )}
           </Button>
           

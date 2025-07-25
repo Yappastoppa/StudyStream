@@ -104,24 +104,32 @@ export function CleanRacingMap({
     },
     onRouteAlternatives: (routes) => {
       setShowAlternatives(true);
+    },
+    onNavigationStart: (route) => {
+      // Add route polyline to map when navigation starts
+      addRoutePolylineToMap(route);
     }
   });
 
-  // Check GPS permission on mount
+  // Enhanced GPS permission check with mobile-friendly prompting
   useEffect(() => {
     const checkLocationPermission = async () => {
       if (!navigator.geolocation) {
+        console.log('❌ Geolocation not supported');
         setShowLocationModal(true);
         return;
       }
 
+      // For mobile devices, be more aggressive about asking for permission
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
       try {
         // Try to get current position to test permission
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 60000
+            timeout: isMobile ? 10000 : 5000, // Longer timeout for mobile
+            maximumAge: 30000 // Shorter max age for more accurate location
           });
         });
         
@@ -131,13 +139,24 @@ export function CleanRacingMap({
         setHasLocationPermission(true);
         setShowLocationModal(false);
         
-        console.log('✅ Location permission already granted');
-      } catch (error) {
-        console.log('❌ Location permission required');
+        console.log('✅ Location permission already granted', coords);
+      } catch (error: any) {
+        console.log('❌ Location permission required:', error.message);
+        
+        // Show specific error messages for mobile users
+        if (error.code === 1) { // PERMISSION_DENIED
+          console.log('🔄 Permission denied, showing permission modal');
+        } else if (error.code === 2) { // POSITION_UNAVAILABLE
+          console.log('📍 Position unavailable, showing permission modal');
+        } else if (error.code === 3) { // TIMEOUT
+          console.log('⏰ Location timeout, showing permission modal');
+        }
+        
         setShowLocationModal(true);
       }
     };
 
+    // Immediate check on mount, especially important for mobile
     checkLocationPermission();
   }, []);
 
@@ -380,6 +399,63 @@ export function CleanRacingMap({
     }
   };
 
+  // Add route polyline to map - critical for showing navigation path
+  const addRoutePolylineToMap = async (route: any) => {
+    if (!map.current || !route?.geometry?.coordinates) return;
+
+    try {
+      // Remove existing navigation route if any
+      if (map.current.getLayer('navigation-route-glow')) {
+        map.current.removeLayer('navigation-route-glow');
+      }
+      if (map.current.getLayer('navigation-route-main')) {
+        map.current.removeLayer('navigation-route-main');
+      }
+      if (map.current.getSource('navigation-route')) {
+        map.current.removeSource('navigation-route');
+      }
+
+      // Add route source
+      map.current.addSource('navigation-route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: route.geometry
+        }
+      });
+
+      // Add glow effect layer for route
+      map.current.addLayer({
+        id: 'navigation-route-glow',
+        type: 'line',
+        source: 'navigation-route',
+        paint: {
+          'line-color': '#00D4FF', // Racing blue glow
+          'line-width': 12,
+          'line-opacity': 0.4,
+          'line-blur': 3
+        }
+      });
+
+      // Add main route layer
+      map.current.addLayer({
+        id: 'navigation-route-main',
+        type: 'line',
+        source: 'navigation-route',
+        paint: {
+          'line-color': '#00D4FF', // Racing blue
+          'line-width': 6,
+          'line-opacity': 1
+        }
+      });
+
+      console.log('✅ Route polyline added to map');
+    } catch (error) {
+      console.error('❌ Failed to add route polyline:', error);
+    }
+  };
+
   // Map initialization
   useEffect(() => {
     if (map.current || !mapContainer.current || !hasLocationPermission) return;
@@ -430,11 +506,13 @@ export function CleanRacingMap({
     };
   }, [hasLocationPermission, userLocation]);
 
-  // Continuous GPS tracking
+  // Continuous GPS tracking - optimized for smooth following
   useEffect(() => {
     if (!hasLocationPermission) return;
 
     let watchId: number | null = null;
+    let lastUpdateTime = 0;
+    const UPDATE_THROTTLE = 1000; // Only update map every 1 second for smoother experience
 
     const startTracking = () => {
       if (navigator.geolocation) {
@@ -443,6 +521,7 @@ export function CleanRacingMap({
             const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
             const speed = position.coords.speed || 0;
             const heading = position.coords.heading || 0;
+            const now = Date.now();
             
             setUserLocation(coords);
             setUserSpeed(speed);
@@ -451,19 +530,23 @@ export function CleanRacingMap({
             
             updateCarMarker(coords, heading);
             
-            // Auto-center if navigating
-            if (isNavigating && isAutoCenter && map.current) {
+            // Smooth auto-center with throttling to prevent glitchy refreshes
+            if (isNavigating && isAutoCenter && map.current && (now - lastUpdateTime > UPDATE_THROTTLE)) {
               const zoom = isDriverView ? 17 : 14;
               const pitch = isDriverView ? 60 : 0;
               
-              map.current.easeTo({
+              // Use flyTo for smoother camera movement instead of easeTo
+              map.current.flyTo({
                 center: coords,
                 bearing: heading,
                 zoom: zoom,
                 pitch: pitch,
-                duration: 600,
+                speed: 0.8, // Slower, smoother movement
+                curve: 1,
                 essential: true
               });
+              
+              lastUpdateTime = now;
             }
           },
           (error) => {
@@ -472,8 +555,8 @@ export function CleanRacingMap({
           },
           {
             enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 1000
+            timeout: 15000,
+            maximumAge: 2000
           }
         );
       }
@@ -525,6 +608,7 @@ export function CleanRacingMap({
           <AlternativeRoutes
             routes={alternativeRoutes.map(route => ({
               ...route,
+              id: route.id || `route-${Date.now()}-${Math.random()}`,
               weight_name: 'routability',
               weight: route.duration || 0
             }))}
@@ -533,11 +617,15 @@ export function CleanRacingMap({
             destination="Selected Destination"
             onClose={() => setShowAlternatives(false)}
             onRouteSelect={(selectedRoute) => {
+              // Add route polyline immediately when route is selected
+              addRoutePolylineToMap(selectedRoute);
               startNavigationWithRoute(selectedRoute);
               setShowAlternatives(false);
             }}
             onLeaveNow={() => {
               if (alternativeRoutes.length > 0) {
+                // Add route polyline and start navigation
+                addRoutePolylineToMap(alternativeRoutes[0]);
                 startNavigationWithRoute(alternativeRoutes[0]);
                 setShowAlternatives(false);
               }
