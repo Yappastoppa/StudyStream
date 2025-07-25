@@ -247,7 +247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user
       const user = await storage.createUser({
         username: finalUsername,
-        inviteCode: inviteCode
+        inviteCode: inviteCode,
+        isGhostMode: false,
+        currentSpeed: 0,
+        totalDistance: 0
       });
 
       res.json({ user, message: 'Registration successful' });
