@@ -1,441 +1,102 @@
+import React, { useState, useCallback } from 'react';
+import { CleanRacingMap } from '@/components/ui/clean-racing-map';
+import { useGeolocation } from '@/hooks/use-geolocation';
 
-import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CleanRacingMap } from "@/components/ui/clean-racing-map";
-import { SpeedHud } from "@/components/racing/speed-hud";
-import { ActionButtons } from "@/components/racing/action-buttons";
-import { SideMenu } from "@/components/racing/side-menu";
-import { ReportModal } from "@/components/racing/report-modal";
-import { EventModal } from "@/components/racing/event-modal";
-import { UserListModal } from "@/components/racing/user-list-modal";
-import { CountdownOverlay } from "@/components/racing/countdown-overlay";
-import { NavigationPanel } from "@/components/racing/navigation-panel";
-import { useWebSocket } from "@/hooks/use-websocket";
-import { useGeolocation } from "@/hooks/use-geolocation";
-import { useToast } from "@/hooks/use-toast";
-import { Flag, Satellite, Menu, Signal, Crosshair } from "lucide-react";
-import { calculateDistance, formatDistance } from "@/lib/utils";
-import type { User } from "@shared/schema";
-
-interface MapPageProps {
-  inviteCode: string;
-  onLogout: () => void;
-}
-
-interface NearbyUser {
-  id: number;
-  username: string;
-  lat: number;
-  lng: number;
-  distance: number;
-  isGhostMode?: boolean;
-}
-
-export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
-  console.log("🔥 MAP PAGE COMPONENT LOADED!");
-  const { toast } = useToast();
-  
-  // UI State
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isGhostMode, setIsGhostMode] = useState(false);
-  const [userStatus, setUserStatus] = useState("live");
-  const [shareRadius, setShareRadius] = useState("2");
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [isUserListModalOpen, setIsUserListModalOpen] = useState(false);
-  const [isCountdownActive, setIsCountdownActive] = useState(false);
-  const [countdownEvent, setCountdownEvent] = useState<any>(null);
-  
-  // Data State
-  const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [distanceTraveled, setDistanceTraveled] = useState(0);
-  const [lastPosition, setLastPosition] = useState<{lat: number, lng: number} | null>(null);
-  const [savedRoutes, setSavedRoutes] = useState<any[]>([]);
-  const [navigationStart, setNavigationStart] = useState<[number, number] | null>(null);
-  const [navigationEnd, setNavigationEnd] = useState<[number, number] | null>(null);
-  const [showNavigationPanel, setShowNavigationPanel] = useState(false);
-
-  // Geolocation callback function defined before hook usage
-  const handleLocationUpdate = useCallback((position: GeolocationPosition) => {
-    // Calculate distance traveled
-    if (lastPosition) {
-      const distance = calculateDistance(
-        lastPosition.lat, 
-        lastPosition.lng, 
-        position.coords.latitude, 
-        position.coords.longitude
-      );
-      setDistanceTraveled(prev => prev + distance);
-    }
-    setLastPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
-  }, [lastPosition]);
-
-  // Geolocation hook with error boundary
-  const geolocationResult = useGeolocation({
-    enableHighAccuracy: true,
-    watchPosition: true,
-    onLocationUpdate: handleLocationUpdate
-  });
+export default function MapDashboard() {
+  const [driverView, setDriverView] = useState(false);
+  const [center, setCenter] = useState<[number, number]>([-74.006, 40.7128]);
 
   const { 
     lat, 
     lng, 
-    speed, 
-    error: locationError,
+    isLoading, 
+    error, 
     requestPermission 
-  } = geolocationResult || { lat: null, lng: null, speed: null, error: null, requestPermission: () => Promise.resolve('denied') };
-
-  // WebSocket hook
-  const { 
-    isConnected, 
-    user, 
-    authenticate, 
-    updateLocation, 
-    toggleGhostMode, 
-    getNearbyUsers,
-    createEvent
-  } = useWebSocket({
-    onUserLocationUpdate: (data) => {
-      setNearbyUsers(prev => {
-        const updated = prev.filter(u => u.id !== data.userId);
-        if (!data.isGhostMode && lat && lng) {
-          const distance = calculateDistance(lat, lng, data.lat, data.lng) * 1000; // Convert to meters
-          updated.push({
-            id: data.userId,
-            username: data.username,
-            lat: data.lat,
-            lng: data.lng,
-            distance,
-            isGhostMode: data.isGhostMode
-          });
-        }
-        return updated;
-      });
+  } = useGeolocation({
+    onLocationUpdate: (pos) => {
+      console.log('📍 Location update received:', pos.coords.latitude, pos.coords.longitude);
+      setCenter([pos.coords.longitude, pos.coords.latitude]);
     },
-    onNewAlert: (data) => {
-      setAlerts(prev => [...prev, data.alert]);
-      toast({
-        title: `${data.alert.type.charAt(0).toUpperCase() + data.alert.type.slice(1)} Alert`,
-        description: data.alert.description || `New ${data.alert.type} reported nearby`,
-      });
-    },
-    onEventInvitation: (data) => {
-      toast({
-        title: "Event Invitation",
-        description: `${data.inviterUsername} has invited you to a ${data.event.type}`,
-      });
-    }
   });
 
-  // Authenticate on mount
-  useEffect(() => {
-    if (inviteCode) {
-      authenticate(inviteCode);
-    }
-  }, [inviteCode, authenticate]);
-
-  // Update location via WebSocket
-  useEffect(() => {
-    if (lat && lng && isConnected && user) {
-      updateLocation(lat, lng, speed || 0);
-    }
-  }, [lat, lng, speed, isConnected, user, updateLocation]);
-
-  // Request location permission on mount
-  useEffect(() => {
-    requestPermission().then(permission => {
-      if (permission === 'denied') {
-        toast({
-          title: "Location Access Required",
-          description: "Please enable location access to use GhostRacer.",
-          variant: "destructive"
-        });
-      }
-    });
-  }, [requestPermission, toast]);
-
-  // Get nearby users periodically
-  useEffect(() => {
-    if (lat && lng && isConnected) {
-      const interval = setInterval(() => {
-        getNearbyUsers(lat, lng, parseInt(shareRadius));
-      }, 5000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [lat, lng, isConnected, shareRadius, getNearbyUsers]);
-
-  const handleGhostModeToggle = () => {
-    const newGhostMode = !isGhostMode;
-    setIsGhostMode(newGhostMode);
-    toggleGhostMode(newGhostMode);
-    
-    toast({
-      title: newGhostMode ? "Ghost Mode Enabled" : "Ghost Mode Disabled",
-      description: newGhostMode 
-        ? "You're now hidden from other racers"
-        : "You're now visible to other racers"
-    });
-  };
-
-  const handleReportSubmit = async (type: string, description: string, reportLat: number, reportLng: number) => {
+  const startNav = useCallback(async () => {
+    console.log('🔥 Starting navigation...');
     try {
-      const response = await fetch('/api/alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          lat: reportLat,
-          lng: reportLng,
-          description,
-          createdBy: user?.id
-        })
-      });
+      const perm = await requestPermission();
+      console.log('🔥 Permission result:', perm);
 
-      if (response.ok) {
-        toast({
-          title: "Alert Reported",
-          description: `${type.charAt(0).toUpperCase() + type.slice(1)} alert has been shared with nearby racers.`
-        });
+      if (perm === 'granted' || (lat && lng)) {
+        setDriverView(true);
+        console.log('🔥 Driver view activated');
       } else {
-        throw new Error('Failed to submit report');
+        alert('Please enable location permission to start navigation');
       }
-    } catch (error) {
-      toast({
-        title: "Report Failed",
-        description: "Unable to submit report. Please try again.",
-        variant: "destructive"
-      });
+    } catch (err) {
+      console.error('🔥 Permission request failed:', err);
+      alert('Location permission failed. Please try again.');
     }
-  };
-
-  const handleEventSubmit = (eventData: {
-    type: string;
-    startTime: Date;
-    targetUserId?: number;
-  }) => {
-    if (!lat || !lng) {
-      toast({
-        title: "Location Required",
-        description: "Current location is needed to create an event.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    createEvent({
-      eventType: eventData.type,
-      startTime: eventData.startTime,
-      lat,
-      lng,
-      targetUserId: eventData.targetUserId
-    });
-
-    toast({
-      title: "Event Created",
-      description: "Your racing event has been created and invitations sent."
-    });
-  };
-
-  const handleChallengeUser = (userId: number) => {
-    const targetUser = nearbyUsers.find(u => u.id === userId);
-    if (targetUser && lat && lng) {
-      const startTime = new Date(Date.now() + 30000); // 30 seconds from now
-      
-      createEvent({
-        eventType: "sprint",
-        startTime,
-        lat,
-        lng,
-        targetUserId: userId
-      });
-
-      toast({
-        title: "Challenge Sent",
-        description: `Sprint challenge sent to ${targetUser.username}`
-      });
-    }
-  };
-
-  const centerMap = useCallback(() => {
-    if (lat && lng) {
-      // This would need to be implemented in the Map component
-      // For now, we'll just show a toast
-      toast({
-        title: "Map Centered",
-        description: "Centered on your current location"
-      });
-    }
-  }, [lat, lng, toast]);
-
-  const nearbyUsersCount = nearbyUsers.filter(u => !u.isGhostMode).length;
-
-  const mapUserLocations = nearbyUsers.map(user => ({
-    id: user.id,
-    username: user.username,
-    lat: user.lat,
-    lng: user.lng,
-    isCurrentUser: false,
-    isGhostMode: user.isGhostMode
-  }));
-
-  // Add current user to map
-  if (lat && lng && user) {
-    mapUserLocations.push({
-      id: user.id,
-      username: user.username,
-      lat,
-      lng,
-      isCurrentUser: true,
-      isGhostMode: isGhostMode
-    });
-  }
+  }, [requestPermission, lat, lng]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       {/* Debug overlay */}
       <div style={{ 
         position: 'absolute', 
-        top: '60px', 
-        left: 0, 
+        top: '10px', 
+        left: '10px', 
         zIndex: 9999, 
         color: 'white', 
         background: 'rgba(0,0,0,0.8)', 
         padding: '5px',
         fontSize: '10px'
       }}>
-        DEBUG MapPage: lat={lat}, lng={lng}, connected={isConnected}
+        DEBUG Dashboard: driverView={driverView.toString()}, lat={lat}, lng={lng}, center=[{center[0]}, {center[1]}]
       </div>
 
-      {/* Full Screen Racing Map */}
-      <CleanRacingMap
-        center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}
-        zoom={15}
+      <CleanRacingMap 
+        center={center} 
+        zoom={driverView ? 15 : 12}
         className="absolute inset-0 z-0"
       />
 
-      {/* Minimal Floating Status Indicator - Top Right */}
-      <div className="absolute top-4 right-4 z-30 flex items-center space-x-2">
-        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full backdrop-blur-sm ${
-          isConnected ? 'bg-racing-green/20' : 'bg-racing-red/20'
-        }`}>
-          <div className={`w-2 h-2 rounded-full ${
-            isConnected ? 'bg-racing-green' : 'bg-racing-red'
-          }`} />
-          <span className={`text-xs font-medium ${
-            isConnected ? 'text-racing-green' : 'text-racing-red'
-          }`}>
-            {isConnected ? 'ONLINE' : 'OFFLINE'}
-          </span>
-        </div>
-        <Button
-          onClick={() => setIsMenuOpen(true)}
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 bg-black/50 backdrop-blur-sm hover:bg-black/70 rounded-full"
-        >
-          <Menu className="w-4 h-4 text-white" />
-        </Button>
-      </div>
-
-      {/* Minimal Speed HUD - Bottom Left */}
-      <SpeedHud
-        currentSpeed={speed || 0}
-        distanceTraveled={distanceTraveled}
-        className="absolute bottom-4 left-4 z-20"
-      />
-
-      {/* Action Buttons (Right Side) */}
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">
-        <ActionButtons
-          isGhostMode={isGhostMode}
-          onGhostModeToggle={handleGhostModeToggle}
-          onReportAlert={() => setIsReportModalOpen(true)}
-          onCreateEvent={() => setIsEventModalOpen(true)}
-          onShowUserList={() => setIsUserListModalOpen(true)}
-        />
-      </div>
-
-      {/* Minimal Center Map Button - Bottom Center */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
-        <Button
-          onClick={centerMap}
-          className="bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white px-4 py-2 text-sm font-semibold rounded-full"
-        >
-          CENTER
-        </Button>
-      </div>
-
-      {/* Navigation Panel */}
-      {showNavigationPanel && (
-        <NavigationPanel
-          origin={navigationStart}
-          destination={navigationEnd}
-          onClose={() => {
-            setShowNavigationPanel(false);
-            setNavigationStart(null);
-            setNavigationEnd(null);
+      {!driverView && (
+        <button
+          onClick={startNav}
+          disabled={isLoading}
+          style={{
+            position: 'absolute',
+            bottom: 40,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '0.75rem 1.5rem',
+            background: isLoading ? '#666' : '#1E90FF',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 16,
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            zIndex: 10
           }}
-          className="absolute bottom-24 left-6 z-20 max-w-sm"
-        />
+        >
+          {isLoading ? 'Locating…' : 'Start Navigation'}
+        </button>
       )}
 
-      {/* Side Menu */}
-      <SideMenu
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        user={user}
-        onLeaveSession={onLogout}
-      />
-
-      {/* Modals */}
-      <ReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        onSubmit={handleReportSubmit}
-        currentLocation={lat && lng ? { lat, lng } : null}
-      />
-
-      <EventModal
-        isOpen={isEventModalOpen}
-        onClose={() => setIsEventModalOpen(false)}
-        onSubmit={handleEventSubmit}
-        nearbyUsers={nearbyUsers.filter(u => !u.isGhostMode)}
-      />
-
-      <UserListModal
-        isOpen={isUserListModalOpen}
-        onClose={() => setIsUserListModalOpen(false)}
-        nearbyUsers={nearbyUsers}
-        onChallengeUser={handleChallengeUser}
-      />
-
-      {/* Countdown Overlay */}
-      <CountdownOverlay
-        isActive={isCountdownActive}
-        onComplete={() => {
-          setIsCountdownActive(false);
-          setCountdownEvent(null);
-          toast({
-            title: "Race Started!",
-            description: "Good luck and race safely!"
-          });
-        }}
-        eventType={countdownEvent?.type || "Sprint Challenge"}
-        opponentName="Opponent"
-      />
-
-      {/* Location Error Notice */}
-      {locationError && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-25">
-          <div className="bg-racing-red/20 border border-racing-red rounded-lg px-4 py-2 backdrop-blur-sm">
-            <div className="flex items-center space-x-2">
-              <Signal className="w-4 h-4 text-racing-red" />
-              <span className="text-racing-red text-sm font-medium">Location access required</span>
-            </div>
-          </div>
+      {error && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 60,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(255,0,0,0.8)',
+            color: 'white',
+            padding: '0.5rem 1rem',
+            borderRadius: 4,
+            zIndex: 10
+          }}
+        >
+          Error: {error}
         </div>
       )}
     </div>

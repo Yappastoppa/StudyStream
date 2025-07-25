@@ -6,12 +6,14 @@ interface CleanRacingMapProps {
   center?: [number, number];
   zoom?: number;
   className?: string;
+  driverView?: boolean;
 }
 
 export function CleanRacingMap({ 
   center = [-74.006, 40.7128], 
   zoom = 13, 
-  className = ""
+  className = "",
+  driverView = false
 }: CleanRacingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -51,7 +53,9 @@ export function CleanRacingMap({
 
         map.current = new mapboxgl.default.Map({
           container: mapContainer.current!,
-          style: 'mapbox://styles/mapbox/dark-v11',
+          style: driverView 
+            ? 'mapbox://styles/mapbox/navigation-night-v1' 
+            : 'mapbox://styles/mapbox/dark-v11',
           center: center,
           zoom: zoom,
           attributionControl: false
