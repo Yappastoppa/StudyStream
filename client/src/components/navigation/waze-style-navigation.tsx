@@ -134,7 +134,7 @@ export function WazeStyleNavigation({
       )}
 
       {/* Speed Widget - Bottom Left */}
-      <div className="absolute bottom-20 left-4 pointer-events-auto">
+      <div className="absolute bottom-32 left-4 pointer-events-auto">
         <Card className="bg-black/80 backdrop-blur-md border-white/20 shadow-lg">
           <CardContent className="p-3 text-center min-w-[80px]">
             <div className="text-white font-bold text-2xl">

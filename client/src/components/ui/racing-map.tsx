@@ -31,6 +31,7 @@ import { RoutePlanner } from '@/components/navigation/route-planner';
 import { NavigationControls } from '@/components/navigation/navigation-controls';
 import { WazeStyleNavigation } from '@/components/navigation/waze-style-navigation';
 import { RouteAlerts, sampleAlerts } from '@/components/navigation/route-alerts';
+import { FloatingSearch } from '@/components/navigation/floating-search';
 import { useNavigation } from '@/hooks/use-navigation';
 
 interface RacingMapProps {
@@ -72,6 +73,7 @@ export function RacingMap({
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showRoutePlanner, setShowRoutePlanner] = useState(false);
+  const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [currentSpeed, setCurrentSpeed] = useState<number>(0);
   const [speedLimit, setSpeedLimit] = useState<number | undefined>(undefined);
@@ -95,7 +97,7 @@ export function RacingMap({
   } = useNavigation({
     mapboxToken: MAPBOX_TOKEN,
     map: map.current,
-    onLocationUpdate: (location, speed, heading) => {
+    onLocationUpdate: (location: [number, number], speed?: number, heading?: number) => {
       setUserLocation(location);
       setCurrentSpeed(speed || 0);
       
@@ -659,7 +661,7 @@ export function RacingMap({
       {/* Waze-Style Navigation UI */}
       <WazeStyleNavigation
         isActive={isNavigating}
-        currentStep={currentStep}
+        currentStep={currentStep || undefined}
         eta={eta}
         remainingDistance={remainingDistance}
         remainingTime={remainingTime}
@@ -675,7 +677,29 @@ export function RacingMap({
         isVisible={isNavigating}
       />
 
-      {/* Route Planner Modal */}
+      {/* Floating Search Overlay */}
+      <FloatingSearch
+        isVisible={showFloatingSearch}
+        onClose={() => setShowFloatingSearch(false)}
+        onDestinationSelect={async (destination) => {
+          const success = await startNavigation(
+            userLocation || [-74.006, 40.7128], 
+            destination.coordinates,
+            { 
+              profile: 'driving-traffic', 
+              avoidHighways: false, 
+              avoidTolls: false,
+              avoidFerries: false
+            }
+          );
+          if (success) {
+            setShowFloatingSearch(false);
+          }
+        }}
+        onPlaceSearch={searchPlaces}
+      />
+
+      {/* Route Planner Modal - Keep for advanced options */}
       <RoutePlanner
         isActive={showRoutePlanner}
         onClose={() => setShowRoutePlanner(false)}
@@ -688,6 +712,19 @@ export function RacingMap({
         onPlaceSearch={searchPlaces}
         currentLocation={userLocation || undefined}
       />
+
+      {/* Quick Navigation Access - Only show when not navigating */}
+      {!isNavigating && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-30 pointer-events-auto">
+          <Button
+            onClick={() => setShowFloatingSearch(true)}
+            className="bg-black/90 hover:bg-black border border-white/20 backdrop-blur-md shadow-lg px-6 py-3 rounded-full flex items-center space-x-2"
+          >
+            <Search className="h-5 w-5 text-racing-blue" />
+            <span className="text-white">Where to?</span>
+          </Button>
+        </div>
+      )}
 
       {/* Navigation Controls - Only show when not navigating */}
       {!isNavigating && (
@@ -705,7 +742,7 @@ export function RacingMap({
       {isMapLoaded && !isNavigating && (
         <>
           {/* Map controls - vertical stack with proper spacing and overflow handling */}
-          <div className="absolute left-4 top-1/4 flex flex-col gap-4 z-10 max-h-[70vh] overflow-y-auto pl-2 pb-4">
+          <div className="absolute left-4 top-20 flex flex-col gap-4 z-10 max-h-[70vh] overflow-y-auto pl-2 pb-4">
             {/* Map style buttons */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button

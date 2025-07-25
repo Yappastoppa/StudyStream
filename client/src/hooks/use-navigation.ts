@@ -39,7 +39,7 @@ interface RouteOptions {
 interface UseNavigationProps {
   mapboxToken: string;
   map?: any;
-  onLocationUpdate?: (location: [number, number], heading?: number) => void;
+  onLocationUpdate?: (location: [number, number], speed?: number, heading?: number) => void;
 }
 
 export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigationProps) {
@@ -250,7 +250,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigat
         setUserHeading(heading);
         
         if (onLocationUpdate) {
-          onLocationUpdate(newLocation, heading);
+          onLocationUpdate(newLocation, position.coords.speed || 0, heading);
         }
         
         // Update navigation progress

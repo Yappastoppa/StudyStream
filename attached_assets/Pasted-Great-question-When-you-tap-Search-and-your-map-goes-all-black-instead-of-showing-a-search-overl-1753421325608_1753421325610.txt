@@ -1,0 +1,43 @@
+Great question! When you tap “Search” and your map goes all black (instead of showing a search overlay, suggestions, or returning to navigation view), that’s usually a UI layering or render bug—not the actual Mapbox or navigation logic. Here’s how Google Maps and Waze do it, and how you can fix it:
+
+⸻
+
+What Should Happen:
+	•	Search opens as a modal/overlay on top of the map (not replacing the map).
+	•	The map stays visible and interactive under the search bar/overlay.
+	•	When a destination is chosen, the UI transitions to show the navigation route, turn-by-turn at the top, and the map stays visible and follows your location/heading.
+
+⸻
+
+Why Yours Goes Black:
+	•	Possible causes:
+	•	The search overlay/component is using a position: absolute or position: fixed with a solid black background at 100% width/height, hiding the map.
+	•	React state is hiding the map view entirely (conditional rendering error).
+	•	CSS or component z-index is wrong, so the map is covered.
+
+⸻
+
+How To Fix (Prompt for Your Dev/Agent):
+
+Prompt:
+
+“When I click the search bar, the entire map view goes black instead of showing a floating search overlay on top of the map (like in Waze/Google Maps).
+
+Please update the navigation/search UI so that:
+	•	The map remains fully visible in the background at all times.
+	•	The search UI opens as a floating overlay/modal at the top (like a Google Maps search bar, or Waze’s search sheet), with search suggestions appearing below.
+	•	When a destination is chosen, animate the search bar away and show the route/navigation UI, keeping the map in view.
+	•	If possible, make sure the search modal is semi-transparent or has rounded corners, and only covers part of the screen (not 100%).
+	•	Do not hide or unmount the map component—just layer the search UI on top using z-index and absolute positioning.”
+
+⸻
+
+Extra UX Tips:
+	•	The search overlay should slide down from the top, not fade in over the whole screen.
+	•	Use a light drop shadow, rounded corners, and maybe a little transparency for the search box.
+	•	On destination selection, transition smoothly to navigation UI and keep the map focused on the route.
+
+⸻
+
+If you want actual code (React, SwiftUI, or MapboxGL JS) to implement this, just tell me your tech stack!
+I can give you an exact code pattern or sample component.
