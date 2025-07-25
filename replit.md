@@ -8,6 +8,16 @@ GhostRacer is a progressive web application (PWA) designed for privacy-focused s
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### January 25, 2025
+- Fixed critical server startup issues (TypeScript errors in storage layer)
+- Resolved API endpoint connectivity problems
+- Server now running successfully on port 5000 with all endpoints functional
+- Identified GPS location access limitation in Replit preview iframe
+- App requires opening in new browser tab for proper GPS functionality
+- Mapbox token still requires refresh from user's account for live map data
+
 ## System Architecture
 
 ### Frontend Architecture
