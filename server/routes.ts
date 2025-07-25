@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertUserSchema, insertEventSchema, insertAlertSchema, insertInviteCodeSchema } from "@shared/schema";
 import { z } from "zod";
+import { generateNJRoutes, loadCachedRoutes, saveUserRoute } from "./generate-nj-routes";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: number;
@@ -449,6 +450,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(leaderboard);
     } catch (error) {
       res.status(400).json({ message: 'Failed to get leaderboard' });
+    }
+  });
+
+  // AI-Generated Race Routes endpoints
+  app.get('/api/routes/nj', async (req, res) => {
+    try {
+      // First try to load cached routes
+      const cachedRoutes = await loadCachedRoutes();
+      
+      if (cachedRoutes && cachedRoutes.features.length > 0) {
+        return res.json(cachedRoutes);
+      }
+      
+      // If no cached routes, generate new ones
+      const routes = await generateNJRoutes("Jersey City, New Jersey, USA", 5);
+      res.json(routes);
+    } catch (error) {
+      console.error('Failed to get NJ routes:', error);
+      res.status(500).json({ 
+        message: 'Failed to generate routes', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+  
+  app.post('/api/routes/nj/generate', async (req, res) => {
+    try {
+      const schema = z.object({
+        place: z.string().default("Jersey City, New Jersey, USA"),
+        numRoutes: z.number().min(1).max(10).default(5)
+      });
+      
+      const { place, numRoutes } = schema.parse(req.body);
+      
+      // Generate new routes
+      const routes = await generateNJRoutes(place, numRoutes);
+      res.json(routes);
+    } catch (error) {
+      console.error('Failed to generate NJ routes:', error);
+      res.status(500).json({ 
+        message: 'Failed to generate routes', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+  
+  app.get('/api/routes/user', async (req, res) => {
+    try {
+      const userRoutesPath = 'client/public/user_race_routes.geojson';
+      const fs = await import('fs/promises');
+      
+      try {
+        const data = await fs.readFile(userRoutesPath, 'utf-8');
+        const routes = JSON.parse(data);
+        res.json(routes);
+      } catch (error) {
+        // No user routes yet
+        res.json({ type: 'FeatureCollection', features: [] });
+      }
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get user routes' });
+    }
+  });
+  
+  app.post('/api/routes/user', async (req, res) => {
+    try {
+      const routeSchema = z.object({
+        type: z.literal('Feature'),
+        properties: z.object({
+          name: z.string(),
+          description: z.string(),
+          distance_km: z.number(),
+          distance_miles: z.number(),
+          roads: z.array(z.string()).optional(),
+          difficulty: z.string().optional()
+        }),
+        geometry: z.object({
+          type: z.literal('LineString'),
+          coordinates: z.array(z.tuple([z.number(), z.number()]))
+        })
+      });
+      
+      const route = routeSchema.parse(req.body);
+      await saveUserRoute(route as any);
+      
+      res.json({ message: 'Route saved successfully', route });
+    } catch (error) {
+      console.error('Failed to save user route:', error);
+      res.status(400).json({ 
+        message: 'Failed to save route', 
+        error: error instanceof Error ? error.message : 'Invalid route data' 
+      });
     }
   });
 

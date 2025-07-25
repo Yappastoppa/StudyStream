@@ -13,10 +13,12 @@ import {
   ZoomOut,
   Route,
   MapPin,
-  Layers
+  Layers,
+  Trophy
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
+import { AIRoutes } from '@/components/racing/ai-routes';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -51,6 +53,7 @@ export function RacingMap({
   const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
   const [navigationRoute, setNavigationRoute] = useState<any>(null);
   const [showOverlays, setShowOverlays] = useState(false);
+  const [showAIRoutes, setShowAIRoutes] = useState(false);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -639,7 +642,7 @@ export function RacingMap({
             </div>
             
             {/* Overlay controls */}
-            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1">
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1 flex flex-col space-y-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -648,6 +651,15 @@ export function RacingMap({
                 title="Route Overlays"
               >
                 <Crosshair className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAIRoutes(!showAIRoutes)}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showAIRoutes ? 'bg-racing-orange/30 text-racing-orange' : 'text-white/70'}`}
+                title="AI Race Routes"
+              >
+                <Trophy className="h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -744,6 +756,16 @@ export function RacingMap({
         overlays={sampleOverlays}
         showOverlays={showOverlays}
       />
+      
+      {/* AI Routes Panel */}
+      {showAIRoutes && (
+        <AIRoutes 
+          map={map.current}
+          onRouteSelect={(route) => {
+            console.log('Selected route:', route);
+          }}
+        />
+      )}
     </div>
   );
 }

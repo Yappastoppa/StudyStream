@@ -10,7 +10,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### January 25, 2025 (Evening Update)
+### January 25, 2025 (Evening Update - Part 2)
+- **AI Race Routes Feature**: Implemented advanced race route generation for New Jersey
+  - Python-based route generator using OSMnx and real OpenStreetMap data
+  - Three route types: AI scenic routes, AI loop circuits, user-generated routes
+  - Routes displayed as glowing lines on map (orange/pink/green color coding)
+  - Trophy icon toggles AI Routes panel showing all available routes
+  - Route details include distance, difficulty, road names, and type
+  - API endpoints for fetching and generating new routes
+  - Pre-generated sample routes for Jersey City, Liberty State Park, and Newark areas
+
+### January 25, 2025 (Evening Update - Part 1)
 - **UI/UX Overhaul**: Implemented modern racing interface with dark theme and neon accents
 - **Navigation System**: Added comprehensive route planning with Mapbox Directions API
   - Turn-by-turn navigation with real-time routing
@@ -98,6 +108,16 @@ Preferred communication style: Simple, everyday language.
 - **Route Options** including avoid highways, avoid tolls, fastest route preferences
 - **Navigation Panel** with distance, duration, and ETA display
 - **Route Overlays** showing speed traps, parking, fuel stations, and scenic routes
+
+### AI Race Routes
+- **Automatic Route Generation** using OSMnx Python library with OpenStreetMap data
+- **Multiple Route Types** including scenic highways, loop circuits, and extreme paths
+- **Real Road Networks** from New Jersey with accurate distance and road information
+- **Interactive Visualization** with color-coded routes on Mapbox (orange/pink/green)
+- **Route Details Panel** showing distance, difficulty, roads traversed, and type
+- **API Endpoints** for fetching pre-generated routes and creating new ones
+- **User Route Submission** allowing community-generated favorite routes
+- **Caching System** for improved performance with pre-generated route files
 
 ### Alert System
 - **Crowdsourced reporting** of cameras, checkpoints, and hazards
