@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -56,7 +57,22 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   const [navigationEnd, setNavigationEnd] = useState<[number, number] | null>(null);
   const [showNavigationPanel, setShowNavigationPanel] = useState(false);
 
-  // Geolocation - fix infinite render loop
+  // Geolocation callback function defined before hook usage
+  const handleLocationUpdate = useCallback((position: GeolocationPosition) => {
+    // Calculate distance traveled
+    if (lastPosition) {
+      const distance = calculateDistance(
+        lastPosition.lat, 
+        lastPosition.lng, 
+        position.coords.latitude, 
+        position.coords.longitude
+      );
+      setDistanceTraveled(prev => prev + distance);
+    }
+    setLastPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
+  }, [lastPosition]);
+
+  // Geolocation hook
   const { 
     lat, 
     lng, 
@@ -66,22 +82,10 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   } = useGeolocation({
     enableHighAccuracy: true,
     watchPosition: true,
-    onLocationUpdate: useCallback((position: GeolocationPosition) => {
-      // Calculate distance traveled
-      if (lastPosition) {
-        const distance = calculateDistance(
-          lastPosition.lat, 
-          lastPosition.lng, 
-          position.coords.latitude, 
-          position.coords.longitude
-        );
-        setDistanceTraveled(prev => prev + distance);
-      }
-      setLastPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
-    }, [lastPosition])
+    onLocationUpdate: handleLocationUpdate
   });
 
-  // WebSocket
+  // WebSocket hook
   const { 
     isConnected, 
     user, 
