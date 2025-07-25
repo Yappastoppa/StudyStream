@@ -1,30 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Activity, TrendingUp, Clock, Users } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface RouteHeatmapProps {
-  isVisible: boolean;
-  onToggle: () => void;
-  className?: string;
   map: any;
+  isActive: boolean;
 }
 
-export function RouteHeatmap({ 
-  isVisible, 
-  onToggle,
-  className = "",
-  map
-}: RouteHeatmapProps) {
-  const [heatmapData, setHeatmapData] = useState<any[]>([]);
-  const [timeFilter, setTimeFilter] = useState('24h');
-
+export function RouteHeatmap({ map, isActive }: RouteHeatmapProps) {
   useEffect(() => {
     if (!map) return;
     
-    if (!isVisible) {
+    if (!isActive) {
       // Remove heatmap layer when inactive
       if (map.getLayer && map.getLayer('racing-heatmap')) {
         map.removeLayer('racing-heatmap');
@@ -142,43 +127,7 @@ export function RouteHeatmap({
         map.removeSource('racing-heatmap');
       }
     };
-  }, [map, isVisible]);
-
-  return (
-    <div className={`${className}`}>
-      <Card className="bg-black/80 backdrop-blur-sm border-racing-red/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-racing-red text-sm flex items-center justify-between">
-            <div className="flex items-center">
-              <Activity className="h-4 w-4 mr-2" />
-              Traffic Heatmap
-            </div>
-            <Switch
-              checked={isVisible}
-              onCheckedChange={onToggle}
-              className="scale-75"
-            />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-white/70 text-xs">Period:</span>
-            <Badge variant="outline" className="border-racing-red/50 text-racing-red">
-              {timeFilter}
-            </Badge>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center space-x-1">
-              <Users className="h-3 w-3 text-racing-blue" />
-              <span className="text-white/70">Active: 12</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <TrendingUp className="h-3 w-3 text-racing-green" />
-              <span className="text-white/70">Peak: 18:30</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  }, [map, isActive]);
+  
+  return null;
 }
