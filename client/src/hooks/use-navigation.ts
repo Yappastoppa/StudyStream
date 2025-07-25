@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import toast from 'react-hot-toast';
 
 interface VoiceInstruction {
   distanceAlongGeometry: number;
@@ -166,6 +167,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       return null;
     } catch (error) {
       console.error('Failed to get route:', error);
+      toast.error("Unable to calculate route. Please check your connection and try again.");
       return null;
     }
   }, [mapboxToken]);
@@ -180,6 +182,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       return data.features || [];
     } catch (error) {
       console.error('Place search failed:', error);
+      toast.error("Couldn't find that place. Check your connection or try a different search.");
       return [];
     }
   }, [mapboxToken]);
@@ -308,6 +311,11 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       },
       (error) => {
         console.error('Location tracking error:', error);
+        toast.error(
+          error.message === "User denied Geolocation"
+            ? "Location permission denied. Enable GPS for navigation."
+            : "Could not get your location. Please try again."
+        );
       },
       {
         enableHighAccuracy: true,
@@ -442,6 +450,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       }
     } catch (error) {
       console.error('Route planning failed:', error);
+      toast.error("Route planning failed. Please try again or check your destination.");
       return null;
     }
   }, [mapboxToken, routeOptions, onRouteAlternatives]);
@@ -552,6 +561,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
           return [];
         } catch (error) {
           console.error('Failed to get route alternatives:', error);
+          toast.error("Unable to find alternative routes. Using default route.");
           return [];
         }
       }, [mapboxToken]);

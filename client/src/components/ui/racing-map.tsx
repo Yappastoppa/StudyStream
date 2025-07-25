@@ -40,6 +40,7 @@ import { LaneGuidanceDisplay, extractLaneGuidance } from '@/components/navigatio
 import { OfflineRoutes } from '@/components/navigation/offline-routes';
 import { useNavigation } from '@/hooks/use-navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
+import toast from 'react-hot-toast';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -198,6 +199,7 @@ export function RacingMap({
         
       } catch (error) {
         console.error('Failed to initialize racing map:', error);
+        toast.error("Map failed to load. Please refresh the page or check your connection.");
         // Show fallback UI instead of crashing
         setIsMapLoaded(false);
       }
@@ -601,6 +603,7 @@ export function RacingMap({
       }
     } catch (error) {
       console.error('Error calculating route:', error);
+      toast.error("Unable to calculate navigation route. Please try selecting different points.");
     }
   };
   
