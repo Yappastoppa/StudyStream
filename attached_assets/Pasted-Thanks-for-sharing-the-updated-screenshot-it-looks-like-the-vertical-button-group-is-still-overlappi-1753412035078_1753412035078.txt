@@ -1,0 +1,49 @@
+Thanks for sharing the updated screenshot—it looks like the vertical button group is still overlapping, especially on smaller viewports or when the window height is limited.
+
+Here’s a stronger prompt for your agent/developer to make sure this gets fixed, even in edge cases:
+
+⸻
+
+Prompt: Prevent Floating Action Button Overlap on All Screen Sizes
+
+Problem:
+The vertical stack of floating action buttons on the map UI still overlaps or gets cut off when the browser window is short or resized. This makes buttons hard to see and use.
+
+How to Fix:
+	1.	Vertical Flex Column:
+	•	Use a vertical flexbox (flex-col) for the button container.
+	•	Add a fixed gap (e.g., gap-3 or gap-4).
+	2.	Limit Height + Scroll:
+	•	Set a max-height (e.g., max-h-[80vh]) on the button container so it never exceeds the visible viewport.
+	•	Add overflow-y-auto to allow scrolling when there are too many buttons.
+	3.	Padding and Safe Area:
+	•	Add padding at the top and bottom (e.g., pt-8 pb-8 or dynamic using safe-area-inset on mobile).
+	4.	Z-Index:
+	•	Ensure the button container has a high z-index (z-40 or similar) to be above map content.
+
+Sample Tailwind CSS Container:
+
+<div className="absolute right-4 top-16 flex flex-col gap-4 z-40 max-h-[80vh] overflow-y-auto pt-4 pb-4">
+  {/* Map action buttons here */}
+</div>
+
+For Extra Small Screens:
+	•	Use media queries (@media (max-height: 600px)) to reduce button size or group excess buttons under a “More” menu if needed.
+
+Checklist:
+	•	No matter how small the window, no button ever overlaps.
+	•	If the buttons exceed the space, the user can scroll them.
+	•	All buttons remain visible, clickable, and spaced out.
+	•	Buttons don’t disappear under map overlays or panels.
+
+⸻
+
+Ask your agent/dev to test this at iPhone SE, iPhone 14 Pro, and short desktop browser window sizes.
+
+If you want a “More” menu for extra buttons:
+	•	Tell them: “Collapse extra buttons into a dropdown/fab menu if they don’t fit in the max height.”
+
+⸻
+
+Copy-paste this for your developer or Replit Agent!
+It’s everything needed to finally fix that overlapping floating button column for all users.
