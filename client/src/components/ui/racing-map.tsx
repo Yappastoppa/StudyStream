@@ -232,8 +232,8 @@ export function RacingMap({
     
     const mapboxgl = await import('mapbox-gl');
     
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
+    // Add navigation controls on left side
+    map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-left');
     
     // Add geolocate control
     map.current.addControl(
