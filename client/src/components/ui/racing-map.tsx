@@ -35,6 +35,7 @@ import { FloatingSearch } from '@/components/navigation/floating-search';
 import { GuidanceSimulator } from '@/components/navigation/guidance-simulator';
 import { ProfessionalNavUI } from '@/components/navigation/professional-nav-ui';
 import { useNavigation } from '@/hooks/use-navigation';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -513,7 +514,7 @@ export function RacingMap({
       
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
-        setNavigationRoute(route);
+        // Route data processed
         
         // Add route to map
         if (map.current.getSource('navigation-route')) {
@@ -650,26 +651,31 @@ export function RacingMap({
     
     setRouteStart(null);
     setRouteEnd(null);
-    setNavigationRoute(null);
+    // Route cleared
   };
   
   return (
-    <div className={`relative w-screen h-screen ${className}`}>
-      {/* Map container */}
-      <div 
-        ref={mapContainer} 
-        className="w-full h-full absolute inset-0" 
-        style={{ minHeight: '100vh' }}
-      />
+    <ErrorBoundary>
+      <div className={`relative w-screen h-screen ${className}`}>
+        {/* Map container */}
+        <div 
+          ref={mapContainer} 
+          className="w-full h-full absolute inset-0" 
+          style={{ minHeight: '100vh' }}
+        />
       
 
       
-      {/* Route Alerts */}
-      <RouteAlerts
-        alerts={sampleAlerts}
-        map={map.current}
-        isVisible={isNavigating}
-      />
+      {/* Route Alerts - Only show when map is loaded and navigating */}
+      {isMapLoaded && (
+        <ErrorBoundary fallback={null}>
+          <RouteAlerts
+            alerts={sampleAlerts}
+            map={map.current}
+            isVisible={isNavigating}
+          />
+        </ErrorBoundary>
+      )}
 
       {/* Floating Search Overlay */}
       <FloatingSearch
@@ -722,7 +728,7 @@ export function RacingMap({
 
       {/* Advanced Navigation UI Options */}
       {isNavigating && (
-        <>
+        <ErrorBoundary fallback={null}>
           {/* Choose between Waze-style or Professional UI */}
           {useProNavUI ? (
             <ProfessionalNavUI
@@ -761,7 +767,7 @@ export function RacingMap({
               {useProNavUI ? 'Waze Style' : 'Pro UI'}
             </Button>
           </div>
-        </>
+        </ErrorBoundary>
       )}
 
       {/* Navigation Controls - Only show when not navigating */}
@@ -777,12 +783,14 @@ export function RacingMap({
       )}
 
       {/* Guidance Simulator */}
-      <GuidanceSimulator
-        route={activeNavigationRoute}
-        map={map.current}
-        isActive={showGuidanceSimulator}
-        onClose={() => setShowGuidanceSimulator(false)}
-      />
+      <ErrorBoundary fallback={null}>
+        <GuidanceSimulator
+          route={activeNavigationRoute}
+          map={map.current}
+          isActive={showGuidanceSimulator}
+          onClose={() => setShowGuidanceSimulator(false)}
+        />
+      </ErrorBoundary>
       
       {/* Racing-style UI overlay - Hide during navigation for clean Waze-style view */}
       {isMapLoaded && !isNavigating && (
@@ -1119,7 +1127,7 @@ export function RacingMap({
         />
       )}
       
-      
     </div>
+    </ErrorBoundary>
   );
 }

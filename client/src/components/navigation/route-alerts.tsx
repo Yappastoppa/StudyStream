@@ -80,42 +80,61 @@ export function RouteAlerts({
     return `${(meters / 1000).toFixed(1)}km`;
   };
 
+  const markersRef = React.useRef<any[]>([]);
+
   React.useEffect(() => {
-    if (!map || !isVisible) return;
+    if (!map || !isVisible || !window.mapboxgl) return;
 
-    // Add alert markers to map
+    // Clear existing markers
+    markersRef.current.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (error) {
+        console.warn('Failed to remove marker:', error);
+      }
+    });
+    markersRef.current = [];
+
+    // Add alert markers to map with safety checks
     alerts.forEach(alert => {
-      const el = document.createElement('div');
-      el.className = getAlertBg(alert.type, alert.severity);
-      el.innerHTML = `
-        <div class="flex items-center justify-center">
-          ${getAlertIcon(alert.type, alert.severity)}
-        </div>
-      `;
-      
-      // Add click handler for alert details
-      el.addEventListener('click', () => {
-        console.log('Alert clicked:', alert);
-      });
+      try {
+        const el = document.createElement('div');
+        el.className = getAlertBg(alert.type, alert.severity);
+        el.innerHTML = `
+          <div class="flex items-center justify-center">
+            ${getAlertIcon(alert.type, alert.severity)}
+          </div>
+        `;
+        
+        // Add click handler for alert details
+        el.addEventListener('click', () => {
+          console.log('Alert clicked:', alert);
+        });
 
-      // Create Mapbox marker
-      const marker = new (window as any).mapboxgl.Marker(el)
-        .setLngLat(alert.coordinates)
-        .addTo(map);
+        // Create Mapbox marker with safety check
+        if (window.mapboxgl && window.mapboxgl.Marker) {
+          const marker = new window.mapboxgl.Marker(el)
+            .setLngLat(alert.coordinates)
+            .addTo(map);
 
-      // Store marker reference for cleanup
-      el.setAttribute('data-alert-id', alert.id);
+          markersRef.current.push(marker);
+        }
+      } catch (error) {
+        console.warn('Failed to create alert marker:', error);
+        // Continue with other alerts instead of crashing
+      }
     });
 
     return () => {
       // Cleanup markers when component unmounts or alerts change
-      const alertMarkers = document.querySelectorAll('[data-alert-id]');
-      alertMarkers.forEach(marker => {
-        const mapboxMarker = (marker as any)._mapboxMarker;
-        if (mapboxMarker) {
-          mapboxMarker.remove();
+      markersRef.current.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (error) {
+          console.warn('Failed to remove marker on cleanup:', error);
         }
       });
+      markersRef.current = [];
     };
   }, [map, alerts, isVisible]);
 
