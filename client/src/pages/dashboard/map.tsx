@@ -72,18 +72,20 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
     setLastPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
   }, [lastPosition]);
 
-  // Geolocation hook
+  // Geolocation hook with error boundary
+  const geolocationResult = useGeolocation({
+    enableHighAccuracy: true,
+    watchPosition: true,
+    onLocationUpdate: handleLocationUpdate
+  });
+
   const { 
     lat, 
     lng, 
     speed, 
     error: locationError,
     requestPermission 
-  } = useGeolocation({
-    enableHighAccuracy: true,
-    watchPosition: true,
-    onLocationUpdate: handleLocationUpdate
-  });
+  } = geolocationResult || { lat: null, lng: null, speed: null, error: null, requestPermission: () => Promise.resolve('denied') };
 
   // WebSocket hook
   const { 
@@ -293,6 +295,20 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
+      {/* Debug overlay */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '60px', 
+        left: 0, 
+        zIndex: 9999, 
+        color: 'white', 
+        background: 'rgba(0,0,0,0.8)', 
+        padding: '5px',
+        fontSize: '10px'
+      }}>
+        DEBUG MapPage: lat={lat}, lng={lng}, connected={isConnected}
+      </div>
+
       {/* Full Screen Racing Map */}
       <CleanRacingMap
         center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}

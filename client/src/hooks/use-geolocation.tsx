@@ -179,7 +179,7 @@ export function useGeolocation({
       options
     );
     setWatchId(id);
-  }, [handleError, options, updatePosition, watchId]);
+  }, [handleError, options, updatePosition]);
 
   const stopWatching = useCallback(() => {
     if (watchId != null) {
