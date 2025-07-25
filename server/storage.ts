@@ -232,7 +232,7 @@ export class MemStorage implements IStorage {
 
   // Additional alert methods
   async getUserAlerts(userId: number): Promise<Alert[]> {
-    return Array.from(this.alerts.values()).filter(alert => alert.userId === userId);
+    return Array.from(this.alerts.values()).filter(alert => alert.createdBy === userId);
   }
 
   async deleteAlert(id: number): Promise<boolean> {
@@ -255,14 +255,14 @@ export class MemStorage implements IStorage {
       event => event.createdBy === userId
     );
     const userAlerts = Array.from(this.alerts.values()).filter(
-      alert => alert.userId === userId
+      alert => alert.createdBy === userId
     );
 
     return {
       totalEvents: userEvents.length,
       totalAlerts: userAlerts.length,
-      maxSpeed: user.maxSpeed || 0,
-      totalDistance: user.totalDistance || 0
+      maxSpeed: user.currentSpeed || 0,
+      totalDistance: user.distanceTraveled || 0
     };
   }
 
@@ -273,16 +273,16 @@ export class MemStorage implements IStorage {
   }>> {
     const users = Array.from(this.users.values());
     
-    let sortedUsers;
+    let sortedUsers: Array<{userId: number; username: string; value: number}>;
     switch (type) {
       case 'speed':
         sortedUsers = users
-          .filter(user => user.maxSpeed)
-          .sort((a, b) => (b.maxSpeed || 0) - (a.maxSpeed || 0))
+          .filter(user => user.currentSpeed)
+          .sort((a, b) => (b.currentSpeed || 0) - (a.currentSpeed || 0))
           .map(user => ({
             userId: user.id,
             username: user.username,
-            value: user.maxSpeed || 0
+            value: user.currentSpeed || 0
           }));
         break;
       case 'events':
@@ -303,8 +303,8 @@ export class MemStorage implements IStorage {
       case 'alerts':
         const alertCounts = new Map<number, number>();
         this.alerts.forEach(alert => {
-          const count = alertCounts.get(alert.userId) || 0;
-          alertCounts.set(alert.userId, count + 1);
+          const count = alertCounts.get(alert.createdBy) || 0;
+          alertCounts.set(alert.createdBy, count + 1);
         });
         sortedUsers = users
           .map(user => ({
