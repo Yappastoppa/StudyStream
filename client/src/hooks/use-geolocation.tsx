@@ -101,8 +101,16 @@ export function useGeolocation({
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     toast.loading('Getting your location...', { id: 'location-loading' });
 
+    // Add timeout for permission prompt
+    const permissionTimeout = setTimeout(() => {
+      if (state.isLoading) {
+        toast.error('Location permission required. Please allow location access when prompted.', { id: 'location-loading' });
+      }
+    }, 2000);
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        clearTimeout(permissionTimeout);
         updatePosition(position);
         setHasTriedRealGPS(true);
         toast.success('Location found!', { id: 'location-loading' });
@@ -113,17 +121,23 @@ export function useGeolocation({
         }
       },
       (error) => {
+        clearTimeout(permissionTimeout);
         handleError(error);
         setHasTriedRealGPS(true);
         toast.dismiss('location-loading');
         
-        // Fallback to simulation mode
-        console.log('Real GPS failed, using simulation:', error);
-        startSimulation();
+        // Only use simulation if permission was denied or unavailable
+        if (error.code === error.PERMISSION_DENIED || error.code === error.POSITION_UNAVAILABLE) {
+          console.log('Real GPS failed, using simulation:', error);
+          startSimulation();
+        }
       },
-      options
+      {
+        ...options,
+        timeout: 10000 // Increase timeout for permission prompt
+      }
     );
-  }, [updatePosition, handleError, options, watchPosition]);
+  }, [updatePosition, handleError, options, watchPosition, state.isLoading]);
 
   const startSimulation = useCallback(() => {
     console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
@@ -134,63 +148,60 @@ export function useGeolocation({
     let timeAccumulator = 0;
     let stoppedTime = 0;
     
-    // Initial position - faster startup (200ms instead of 1000ms)
-    setTimeout(() => {
-      setState({
-        lat: 40.7128,
-        lng: -74.0060,
-        accuracy: 10,
-        speed: 0,
-        heading: Math.random() * 360,
-        error: null,
-        isLoading: false
-      });
+    // Initial position - immediate startup
+    setState({
+      lat: 40.7128,
+      lng: -74.0060,
+      accuracy: 10,
+      speed: 0,
+      heading: Math.random() * 360,
+      error: null,
+      isLoading: false
+    });
+    
+    toast.success('GPS simulation active');
+    
+    // Start speed simulation with less frequent updates to reduce jitter
+    simulationInterval = setInterval(() => {
+      timeAccumulator += 0.5;
       
-      toast.success('GPS simulation active');
+      // Change target speed every 5-10 seconds
+      if (Math.random() < 0.01) {
+        targetSpeed = Math.random() * 120; // 0-120 km/h
+      }
       
-      // Start speed simulation
-      simulationInterval = setInterval(() => {
-        timeAccumulator += 0.1;
-        
-        // Change target speed every 3-8 seconds
-        if (Math.random() < 0.02) {
-          targetSpeed = Math.random() * 120; // 0-120 km/h
-        }
-        
-        // Smooth acceleration/deceleration
-        const speedDiff = targetSpeed - currentSpeed;
-        currentSpeed += speedDiff * 0.1; // 10% adjustment per update
-        
-        // Handle stopped state more realistically
-        let displaySpeed = currentSpeed;
-        
-        if (currentSpeed < 2) {
-          stoppedTime += 0.1;
-          // When nearly stopped, reduce to exactly 0 after brief moment
-          if (stoppedTime > 0.5) {
-            displaySpeed = 0;
-            currentSpeed = 0;
-          } else {
-            // Small random jitter when coming to stop
-            displaySpeed = Math.max(0, currentSpeed + (Math.random() - 0.5) * 0.5);
-          }
+      // Smooth acceleration/deceleration
+      const speedDiff = targetSpeed - currentSpeed;
+      currentSpeed += speedDiff * 0.05; // Slower adjustment for smoother changes
+      
+      // Handle stopped state more realistically
+      let displaySpeed = currentSpeed;
+      
+      if (currentSpeed < 2) {
+        stoppedTime += 0.5;
+        // When nearly stopped, reduce to exactly 0 after brief moment
+        if (stoppedTime > 1) {
+          displaySpeed = 0;
+          currentSpeed = 0;
         } else {
-          stoppedTime = 0;
-          // Normal driving variation only when moving
-          const variation = (Math.random() - 0.5) * 1.5;
-          displaySpeed = Math.max(0, currentSpeed + variation);
+          // Small random jitter when coming to stop
+          displaySpeed = Math.max(0, currentSpeed + (Math.random() - 0.5) * 0.3);
         }
-        
-        setState(prev => ({
-          ...prev,
-          speed: displaySpeed,
-          heading: displaySpeed > 1 ? 
-            (prev.heading || 0) + (Math.random() - 0.5) * (displaySpeed > 20 ? 3 : 1) :
-            prev.heading // Don't change heading when stopped
-        }));
-      }, 100); // Update every 100ms for smooth speedometer
+      } else {
+        stoppedTime = 0;
+        // Reduced variation when moving to prevent jitter
+        const variation = (Math.random() - 0.5) * 0.8;
+        displaySpeed = Math.max(0, currentSpeed + variation);
+      }
       
-    }, 200); // Faster simulation startup - 200ms instead of 1000ms
+      setState(prev => ({
+        ...prev,
+        speed: displaySpeed,
+        heading: displaySpeed > 2 ? 
+          (prev.heading || 0) + (Math.random() - 0.5) * (displaySpeed > 30 ? 2 : 0.5) :
+          prev.heading // Don't change heading when stopped
+      }));
+    }, 500); // Update every 500ms instead of 100ms to reduce jitter
     
     return () => {
       if (simulationInterval) {

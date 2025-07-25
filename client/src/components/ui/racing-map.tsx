@@ -35,12 +35,12 @@ export function RacingMap({
   const userMarkerRef = useRef<any>(null);
   const lastUserLocationRef = useRef<[number, number] | null>(null);
   const manualPanTimeoutRef = useRef<NodeJS.Timeout>();
-  
+
   // Core app state
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(true);
-  
+
   // Live Navigation State
   const [isDriverView, setIsDriverView] = useState(true);
   const [isAutoCenter, setIsAutoCenter] = useState(true);
@@ -50,10 +50,10 @@ export function RacingMap({
   const [isGPSLost, setIsGPSLost] = useState(false);
   const [showCenterButton, setShowCenterButton] = useState(false);
   const [isRerouting, setIsRerouting] = useState(false);
-  
+
   // UI state
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
-  
+
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
   // Enhanced navigation hook with live GPS tracking
@@ -86,15 +86,15 @@ export function RacingMap({
       setUserSpeed(speed || 0);
       setUserHeading(heading || 0);
       setIsGPSLost(false);
-      
+
       // Update car marker position and rotation
       updateCarMarker(location, heading || 0);
-      
+
       // Auto-center map if navigation is active and auto-center is enabled
       if (isNavigating && isAutoCenter && map.current) {
         const zoom = isDriverView ? 17 : 14;
         const pitch = isDriverView ? 60 : 0;
-        
+
         map.current.easeTo({
           center: location,
           bearing: heading || 0,
@@ -104,12 +104,12 @@ export function RacingMap({
           essential: true
         });
       }
-      
+
       // Check for off-route detection
       if (isNavigating && currentRoute && lastUserLocationRef.current) {
         checkOffRoute(location);
       }
-      
+
       lastUserLocationRef.current = location;
     },
     onRouteAlternatives: (routes) => {
@@ -134,13 +134,13 @@ export function RacingMap({
             maximumAge: 60000
           });
         });
-        
+
         // Cache last known location
         const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
         setUserLocation(coords);
         setHasLocationPermission(true);
         setShowLocationModal(false);
-        
+
         console.log('✅ Location permission already granted');
       } catch (error) {
         console.log('❌ Location permission required');
@@ -161,16 +161,16 @@ export function RacingMap({
   // Off-route detection function
   const checkOffRoute = (userLocation: [number, number]) => {
     if (!currentRoute || !currentRoute.geometry?.coordinates) return;
-    
+
     const routeCoords = currentRoute.geometry.coordinates;
     let minDistance = Infinity;
-    
+
     // Calculate distance to route line
     for (let i = 0; i < routeCoords.length - 1; i++) {
       const distance = distanceToLineSegment(userLocation, routeCoords[i], routeCoords[i + 1]);
       minDistance = Math.min(minDistance, distance);
     }
-    
+
     // If user is more than 100m from route, trigger rerouting
     if (minDistance > 0.1) { // 0.1 km = 100m
       handleOffRoute();
@@ -180,10 +180,10 @@ export function RacingMap({
   // Handle off-route situation
   const handleOffRoute = async () => {
     if (isRerouting || !userLocation) return;
-    
+
     setIsRerouting(true);
     toast.loading("You're off route. Rerouting...", { id: 'rerouting' });
-    
+
     try {
       // Get destination from current route
       if (currentRoute && currentRoute.geometry?.coordinates?.length > 0) {
@@ -203,20 +203,20 @@ export function RacingMap({
     const [px, py] = point;
     const [x1, y1] = lineStart;
     const [x2, y2] = lineEnd;
-    
+
     const A = px - x1;
     const B = py - y1;
     const C = x2 - x1;
     const D = y2 - y1;
-    
+
     const dot = A * C + B * D;
     const lenSq = C * C + D * D;
-    
+
     let param = -1;
     if (lenSq !== 0) param = dot / lenSq;
-    
+
     let xx, yy;
-    
+
     if (param < 0) {
       xx = x1;
       yy = y1;
@@ -227,7 +227,7 @@ export function RacingMap({
       xx = x1 + param * C;
       yy = y1 + param * D;
     }
-    
+
     const dx = px - xx;
     const dy = py - yy;
     return Math.sqrt(dx * dx + dy * dy) * 111; // Convert to km approximately
@@ -237,9 +237,9 @@ export function RacingMap({
   const toggleViewMode = async () => {
     const newMode = !isDriverView;
     setIsDriverView(newMode);
-    
+
     if (!map.current || !isNavigating) return;
-    
+
     if (newMode) {
       // Switch to driver view - close follow with 3D perspective
       if (userLocation) {
@@ -259,7 +259,7 @@ export function RacingMap({
         currentRoute.geometry.coordinates.forEach((coord: [number, number]) => {
           bounds.extend(coord);
         });
-        
+
         map.current.fitBounds(bounds, { 
           padding: 50, 
           duration: 600,
@@ -272,15 +272,15 @@ export function RacingMap({
   // Handle manual pan detection
   const handleMapPan = () => {
     if (!isNavigating) return;
-    
+
     setIsAutoCenter(false);
     setShowCenterButton(true);
-    
+
     // Auto-hide center button after 10 seconds
     if (manualPanTimeoutRef.current) {
       clearTimeout(manualPanTimeoutRef.current);
     }
-    
+
     manualPanTimeoutRef.current = setTimeout(() => {
       setShowCenterButton(false);
     }, 10000);
@@ -290,7 +290,7 @@ export function RacingMap({
   const handleRecenter = () => {
     setIsAutoCenter(true);
     setShowCenterButton(false);
-    
+
     if (userLocation && map.current) {
       map.current.flyTo({
         center: userLocation,
@@ -365,7 +365,7 @@ export function RacingMap({
     if (!distanceInMeters || isNaN(distanceInMeters) || distanceInMeters < 0) {
       return '0 m';
     }
-    
+
     if (distanceInMeters >= 1000) {
       const km = distanceInMeters / 1000;
       return `${km.toFixed(1)} km`;
@@ -379,10 +379,10 @@ export function RacingMap({
     if (!timeInSeconds || isNaN(timeInSeconds) || timeInSeconds < 0) {
       return '0 min';
     }
-    
+
     const hours = Math.floor(timeInSeconds / 3600);
     const minutes = Math.floor((timeInSeconds % 3600) / 60);
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else {
@@ -393,14 +393,14 @@ export function RacingMap({
   // GPS loss detection
   useEffect(() => {
     if (!isNavigating) return;
-    
+
     const gpsTimeout = setTimeout(() => {
       if (!userLocation) {
         setIsGPSLost(true);
         toast.error("Searching for GPS signal...", { id: 'gps-lost' });
       }
     }, 10000); // 10 seconds without GPS update
-    
+
     return () => clearTimeout(gpsTimeout);
   }, [userLocation, isNavigating]);
 
@@ -410,10 +410,10 @@ export function RacingMap({
     satellite: 'mapbox://styles/mapbox/satellite-streets-v12', 
     dark: 'mapbox://styles/mapbox/dark-v11'
   };
-  
+
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
-    
+
     const initMap = async () => {
       try {
         if (!MAPBOX_TOKEN) {
@@ -423,7 +423,7 @@ export function RacingMap({
 
         const mapboxgl = await import('mapbox-gl');
         mapboxgl.default.accessToken = MAPBOX_TOKEN;
-        
+
         map.current = new mapboxgl.default.Map({
           container: mapContainer.current!,
           style: mapStyles[mapStyle],
@@ -435,7 +435,7 @@ export function RacingMap({
           doubleClickZoom: false,
           dragRotate: true
         });
-        
+
         map.current.on('load', () => {
           setIsMapLoaded(true);
           setupMapLayers();
@@ -445,11 +445,11 @@ export function RacingMap({
         // Add pan detection for manual navigation override
         map.current.on('dragstart', handleMapPan);
         map.current.on('zoomstart', handleMapPan);
-        
+
         // Route drawing and navigation functionality
         map.current.on('click', (e: any) => {
           const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-          
+
           if (isDrawingRoute) {
             setDrawingRoute((prev: any[]) => [...prev, coords]);
             addRoutePoint(coords);
@@ -467,7 +467,7 @@ export function RacingMap({
           }
         });
 
-        
+
       } catch (error) {
         console.error('Failed to initialize racing map:', error);
         toast.error("Map failed to load. Please refresh the page or check your connection.");
@@ -475,10 +475,10 @@ export function RacingMap({
         setIsMapLoaded(false);
       }
     };
-    
+
     // Add a longer timeout to ensure DOM is ready
     const timeoutId = setTimeout(initMap, 200);
-    
+
     return () => {
       clearTimeout(timeoutId);
       if (map.current) {
@@ -487,16 +487,16 @@ export function RacingMap({
       }
     };
   }, []);
-  
+
   const setupMapLayers = () => {
     if (!map.current) return;
-    
+
     // Add traffic layer
     map.current.addSource('traffic', {
       type: 'vector',
       url: 'mapbox://mapbox.mapbox-traffic-v1'
     });
-    
+
     map.current.addLayer({
       id: 'traffic-congestion',
       type: 'line',
@@ -526,7 +526,7 @@ export function RacingMap({
         'line-blur': 1
       }
     });
-    
+
     // Add population density overlay (choropleth style)
     map.current.addSource('population-density', {
       type: 'geojson',
@@ -535,7 +535,7 @@ export function RacingMap({
         features: generateDensityData() // Simulated density data
       }
     });
-    
+
     map.current.addLayer({
       id: 'population-density',
       type: 'fill',
@@ -555,7 +555,7 @@ export function RacingMap({
         'fill-opacity': 0.6
       }
     });
-    
+
     // Add route drawing source
     map.current.addSource('current-route', {
       type: 'geojson',
@@ -564,7 +564,7 @@ export function RacingMap({
         features: []
       }
     });
-    
+
     map.current.addLayer({
       id: 'current-route',
       type: 'line',
@@ -575,21 +575,21 @@ export function RacingMap({
         'line-opacity': 0.9
       }
     });
-    
+
     // Add saved routes
     savedRoutes.forEach((route, index) => {
       addSavedRoute(route, index);
     });
   };
-  
+
   const setupMapControls = async () => {
     if (!map.current) return;
-    
+
     const mapboxgl = await import('mapbox-gl');
-    
+
     // Add navigation controls on left side
     map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-left');
-    
+
     // Add geolocate control
     map.current.addControl(
       new mapboxgl.default.GeolocateControl({
@@ -602,7 +602,7 @@ export function RacingMap({
       'top-right'
     );
   };
-  
+
   const generateDensityData = () => {
     // Generate simulated population density polygons
     const features = [];
@@ -610,13 +610,13 @@ export function RacingMap({
       [-74.1, 40.6], // SW
       [-73.9, 40.8]  // NE  
     ];
-    
+
     for (let i = 0; i < 20; i++) {
       const lng1 = bounds[0][0] + Math.random() * (bounds[1][0] - bounds[0][0]);
       const lat1 = bounds[0][1] + Math.random() * (bounds[1][1] - bounds[0][1]);
       const lng2 = lng1 + 0.02;
       const lat2 = lat1 + 0.02;
-      
+
       features.push({
         type: 'Feature',
         properties: {
@@ -634,13 +634,13 @@ export function RacingMap({
         }
       });
     }
-    
+
     return features;
   };
-  
+
   const addRoutePoint = (coords: [number, number]) => {
     if (!map.current) return;
-    
+
     const routeData = {
       type: 'FeatureCollection',
       features: [{
@@ -652,18 +652,18 @@ export function RacingMap({
         }
       }]
     };
-    
+
     map.current.getSource('current-route').setData(routeData);
   };
-  
+
   const addSavedRoute = (route: any, index: number) => {
     if (!map.current) return;
-    
+
     map.current.addSource(`saved-route-${index}`, {
       type: 'geojson',
       data: route.data
     });
-    
+
     // Glow effect with multiple layers
     map.current.addLayer({
       id: `saved-route-glow-${index}`,
@@ -676,7 +676,7 @@ export function RacingMap({
         'line-blur': 3
       }
     });
-    
+
     map.current.addLayer({
       id: `saved-route-${index}`,
       type: 'line',
@@ -688,18 +688,18 @@ export function RacingMap({
       }
     });
   };
-  
+
   const toggleMapStyle = (newStyle: 'navigation' | 'satellite' | 'dark') => {
     if (!map.current) return;
     setMapStyle(newStyle);
     map.current.setStyle(mapStyles[newStyle]);
-    
+
     // Restore layers after style change
     map.current.once('styledata', () => {
       setupMapLayers();
     });
   };
-  
+
   const toggleTraffic = () => {
     if (!map.current) return;
     const newVisibility = !showTraffic;
@@ -710,7 +710,7 @@ export function RacingMap({
       newVisibility ? 'visible' : 'none'
     );
   };
-  
+
   const toggleDensity = () => {
     if (!map.current) return;
     const newVisibility = !showDensity;
@@ -721,7 +721,7 @@ export function RacingMap({
       newVisibility ? 'visible' : 'none'
     );
   };
-  
+
   const zoomToOverview = () => {
     if (!map.current) return;
     map.current.flyTo({
@@ -731,10 +731,10 @@ export function RacingMap({
       bearing: 0
     });
   };
-  
+
   const finishRoute = () => {
     if (drawingRoute.length < 2) return;
-    
+
     const newRoute = {
       name: `Route ${Date.now()}`,
       color: '#ff6b35',
@@ -750,30 +750,30 @@ export function RacingMap({
         }]
       }
     };
-    
+
     onRouteSelect?.(newRoute);
     setIsDrawingRoute(false);
     setDrawingRoute([]);
-    
+
     // Clear current route display
     map.current?.getSource('current-route').setData({
       type: 'FeatureCollection',
       features: []
     });
   };
-  
+
   const addNavigationMarker = async (coords: [number, number], type: 'start' | 'end') => {
     if (!map.current) return;
-    
+
     const mapboxgl = await import('mapbox-gl');
-    
+
     // Remove existing marker if any
     const markerId = `navigation-${type}`;
     const existingMarker = (map.current as any)[markerId];
     if (existingMarker) {
       existingMarker.remove();
     }
-    
+
     // Create custom marker element
     const el = document.createElement('div');
     el.className = 'navigation-marker';
@@ -782,7 +782,7 @@ export function RacingMap({
     el.style.borderRadius = '50%';
     el.style.border = '3px solid white';
     el.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
-    
+
     if (type === 'start') {
       el.style.backgroundColor = '#00ff88';
       el.innerHTML = '<div style="color: black; font-weight: bold; text-align: center; line-height: 24px;">A</div>';
@@ -790,30 +790,30 @@ export function RacingMap({
       el.style.backgroundColor = '#ff0033';
       el.innerHTML = '<div style="color: white; font-weight: bold; text-align: center; line-height: 24px;">B</div>';
     }
-    
+
     const marker = new mapboxgl.default.Marker(el)
       .setLngLat(coords)
       .addTo(map.current);
-    
+
     // Store marker reference
     (map.current as any)[markerId] = marker;
   };
-  
+
   const calculateNavigationRoute = async (start: [number, number], end: [number, number]) => {
     if (!map.current || !MAPBOX_TOKEN) return;
-    
+
     try {
       const response = await fetch(
         `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${start.join(',')};${end.join(',')}?` +
         `geometries=geojson&steps=true&access_token=${MAPBOX_TOKEN}&overview=full&annotations=distance,duration,speed`
       );
-      
+
       const data = await response.json();
-      
+
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         // Route data processed
-        
+
         // Add route to map
         if (map.current.getSource('navigation-route')) {
           (map.current.getSource('navigation-route') as any).setData({
@@ -830,7 +830,7 @@ export function RacingMap({
               geometry: route.geometry
             }
           });
-          
+
           // Add glow effect layer
           map.current.addLayer({
             id: 'navigation-route-glow',
@@ -843,7 +843,7 @@ export function RacingMap({
               'line-blur': 3
             }
           });
-          
+
           // Add main route layer
           map.current.addLayer({
             id: 'navigation-route-main',
@@ -856,14 +856,14 @@ export function RacingMap({
             }
           });
         }
-        
+
         // Fit map to route bounds
         const bounds = new (await import('mapbox-gl')).default.LngLatBounds();
         route.geometry.coordinates.forEach((coord: [number, number]) => {
           bounds.extend(coord);
         });
         map.current.fitBounds(bounds, { padding: 100 });
-        
+
         // Notify parent component that navigation has started
         if (onNavigationStart) {
           onNavigationStart(start, end);
@@ -874,32 +874,32 @@ export function RacingMap({
       toast.error("Unable to calculate navigation route. Please try selecting different points.");
     }
   };
-  
+
   const handleLocationSelect = (coordinates: [number, number], name: string) => {
     if (!map.current) return;
-    
+
     // Fly to the selected location
     map.current.flyTo({
       center: coordinates,
       zoom: 15,
       essential: true
     });
-    
+
     // Add a temporary marker
     addTemporaryMarker(coordinates, name);
   };
-  
+
   const addTemporaryMarker = async (coords: [number, number], name: string) => {
     if (!map.current) return;
-    
+
     const mapboxgl = await import('mapbox-gl');
-    
+
     // Remove existing temporary marker if any
     const existingMarker = (map.current as any).tempMarker;
     if (existingMarker) {
       existingMarker.remove();
     }
-    
+
     // Create new marker
     const el = document.createElement('div');
     el.className = 'temp-location-marker';
@@ -909,11 +909,11 @@ export function RacingMap({
     el.style.backgroundColor = '#00ff88';
     el.style.border = '2px solid white';
     el.style.boxShadow = '0 0 10px rgba(0, 255, 136, 0.5)';
-    
+
     const marker = new mapboxgl.default.Marker(el)
       .setLngLat(coords)
       .addTo(map.current);
-    
+
     // Store marker reference and auto-remove after 5 seconds
     (map.current as any).tempMarker = marker;
     setTimeout(() => {
@@ -926,7 +926,7 @@ export function RacingMap({
 
   const clearNavigationRoute = () => {
     if (!map.current) return;
-    
+
     // Remove route layers
     if (map.current.getLayer('navigation-route-main')) {
       map.current.removeLayer('navigation-route-main');
@@ -935,9 +935,10 @@ export function RacingMap({
       map.current.removeLayer('navigation-route-glow');
     }
     if (map.current.getSource('navigation-route')) {
-      map.current.removeSource('navigation-route');
+      ```text
+map.current.removeSource('navigation-route');
     }
-    
+
     // Remove markers
     ['start', 'end'].forEach(type => {
       const markerId = `navigation-${type}`;
@@ -947,12 +948,12 @@ export function RacingMap({
         delete (map.current as any)[markerId];
       }
     });
-    
+
     setRouteStart(null);
     setRouteEnd(null);
     // Route cleared
   };
-  
+
   return (
     <ErrorBoundary>
       <div className={`relative w-screen h-screen ${className}`}>
@@ -999,9 +1000,9 @@ export function RacingMap({
             formatTime={formatTime}
           />
         )}
-      
 
-      
+
+
       {/* Route Alerts - Only show when map is loaded and navigating */}
       {isMapLoaded && (
         <ErrorBoundary fallback={null}>
@@ -1124,15 +1125,15 @@ export function RacingMap({
           setUserSpeed(speed || 0);
           setUserHeading(heading || 0);
           setCurrentSpeed(speed || 0);
-          
+
           // Update car marker position and rotation
           updateCarMarker(location, heading || 0);
-          
+
           // Auto-center map if navigation is active and auto-center is enabled
           if (isNavigating && isAutoCenter && map.current) {
             const zoom = isDriverView ? 17 : 14;
             const pitch = isDriverView ? 60 : 0;
-            
+
             map.current.easeTo({
               center: location,
               bearing: heading || 0,
@@ -1142,12 +1143,12 @@ export function RacingMap({
               essential: true
             });
           }
-          
+
           // Check for off-route detection
           if (isNavigating && currentRoute && lastUserLocationRef.current) {
             checkOffRoute(location);
           }
-          
+
           lastUserLocationRef.current = location;
         }}
         onGPSStatusChange={(isLost: boolean) => {
@@ -1172,7 +1173,7 @@ export function RacingMap({
               </div>
               <div className="text-xs text-white/60">km/h</div>
             </div>
-            
+
             {/* ETA and Distance */}
             <div className="flex justify-between text-sm">
               <div className="text-center">
@@ -1188,7 +1189,7 @@ export function RacingMap({
                 <div className="text-white/60 text-xs">distance</div>
               </div>
             </div>
-            
+
             {/* Next Instruction */}
             {currentStep && (
               <div className="border-t border-white/20 pt-2">
@@ -1232,7 +1233,7 @@ export function RacingMap({
               onStopNavigation={() => stopNavigation()}
             />
           )}
-          
+
           {/* UI Style Toggle */}
           <div className="absolute top-4 left-4 pointer-events-auto z-50">
             <Button
@@ -1266,7 +1267,7 @@ export function RacingMap({
           onClose={() => setShowGuidanceSimulator(false)}
         />
       </ErrorBoundary>
-      
+
       {/* Racing-style UI overlay - Hide during navigation for clean Waze-style view */}
       {isMapLoaded && !isNavigating && (
         <>
@@ -1302,7 +1303,7 @@ export function RacingMap({
                 <Navigation className="h-5 w-5" />
               </Button>
             </div>
-            
+
             {/* Toggle controls */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button
@@ -1324,7 +1325,7 @@ export function RacingMap({
                 {showDensity ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </Button>
             </div>
-            
+
             {/* Quick actions */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button
@@ -1360,7 +1361,7 @@ export function RacingMap({
                 <MapPin className="h-5 w-5" />
               </Button>
             </div>
-            
+
             {/* Overlay controls */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button
@@ -1408,7 +1409,7 @@ export function RacingMap({
               >
                 <Trophy className="h-5 w-5" />
               </Button>
-              
+
             </div>
 
             {/* Mobile responsive - show fewer buttons on small screens */}
@@ -1427,7 +1428,7 @@ export function RacingMap({
               </Button>
             </div>
           </div>
-          
+
           {/* Route drawing dialog - centered popup */}
           {isDrawingRoute && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -1456,13 +1457,13 @@ export function RacingMap({
                     ×
                   </Button>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2 text-racing-green">
                     <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
                     <span className="text-sm">Click on the map to add route points</span>
                   </div>
-                  
+
                   <div className="bg-racing-steel/20 rounded-lg p-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-white/70">Points added:</span>
@@ -1475,7 +1476,7 @@ export function RacingMap({
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex space-x-3">
                     <Button
                       onClick={finishRoute}
@@ -1505,7 +1506,7 @@ export function RacingMap({
               </div>
             </div>
           )}
-          
+
           {/* Navigation mode instructions */}
           {navigationMode && !routeEnd && (
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
@@ -1527,7 +1528,7 @@ export function RacingMap({
               </div>
             </div>
           )}
-          
+
           {/* Minimal traffic legend - bottom left corner */}
           {showTraffic && (
             <div className="absolute bottom-24 left-6 z-10">
@@ -1549,7 +1550,7 @@ export function RacingMap({
               </div>
             </div>
           )}
-          
+
           {/* Saved routes - minimal indicator */}
           {savedRoutes.length > 0 && (
             <div className="absolute top-2 right-6 z-10">
@@ -1561,14 +1562,14 @@ export function RacingMap({
           )}
         </>
       )}
-      
+
       {/* Route Overlays */}
       <RouteOverlays 
         map={map.current}
         overlays={sampleOverlays}
         showOverlays={showOverlays}
       />
-      
+
       {/* AI Routes Panel */}
       {showAIRoutes && (
         <AIRoutes 
@@ -1578,27 +1579,27 @@ export function RacingMap({
           }}
         />
       )}
-      
+
       {/* Route Creator */}
       <RouteCreator 
         map={map.current}
         isActive={showRouteCreator}
         onClose={() => setShowRouteCreator(false)}
       />
-      
+
       {/* Simulation Mode */}
       <SimulationMode 
         map={map.current}
         isActive={showSimulation}
         onToggle={() => setShowSimulation(!showSimulation)}
       />
-      
+
       {/* Route Heatmap */}
       <RouteHeatmap 
         map={map.current}
         isActive={showHeatmap}
       />
-      
+
       {/* Route Leaderboard */}
       {showLeaderboard && (
         <RouteLeaderboard 
@@ -1607,7 +1608,7 @@ export function RacingMap({
       )}
 
       {/* Enhanced Navigation Components */}
-      
+
       {/* Alternative Routes Modal */}
       <AlternativeRoutes
         isVisible={showAlternatives}
@@ -1635,7 +1636,7 @@ export function RacingMap({
             avoidFerries: options.avoidFerries,
             avoidHighways: options.avoidHighways
           }));
-          
+
           // Recalculate routes with new options
           if (userLocation) {
             const routes = await planRouteWithAlternatives(
@@ -1676,7 +1677,7 @@ export function RacingMap({
       )}
 
       {/* Live Navigation UI Elements */}
-      
+
       {/* Center Button - appears when user manually pans during navigation */}
       {showCenterButton && (
         <div className="fixed bottom-20 right-4 z-50">
@@ -1809,7 +1810,7 @@ export function RacingMap({
         isVisible={false} // Will be controlled by a future toggle
         onClose={() => {}}
       />
-      
+
     </div>
     </ErrorBoundary>
   );

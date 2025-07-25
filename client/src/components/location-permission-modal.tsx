@@ -58,14 +58,16 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-white/80 text-center">
-            Real-time navigation requires precise GPS location access. 
-            Please allow location permissions when your browser prompts you.
+            This navigation app needs your location to provide turn-by-turn directions. 
+            Tap "Allow Location Access" and approve the permission when prompted.
           </p>
           
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-            <p className="text-yellow-400 text-sm font-medium mb-1">📱 On Mobile:</p>
+            <p className="text-yellow-400 text-sm font-medium mb-1">📱 Important:</p>
             <p className="text-yellow-300 text-xs">
-              If you don't see a permission prompt, check your browser settings to enable location for this site.
+              • You must tap the button below to trigger the permission prompt<br/>
+              • If no prompt appears, your browser may have blocked location access<br/>
+              • For best results, open this app in Safari or Chrome (not Replit preview)
             </p>
           </div>
           
