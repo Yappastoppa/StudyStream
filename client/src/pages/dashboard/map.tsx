@@ -34,7 +34,7 @@ interface NearbyUser {
 export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   console.log("🔥 MAP PAGE COMPONENT LOADED!");
   const { toast } = useToast();
-
+  
   // UI State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGhostMode, setIsGhostMode] = useState(false);
@@ -45,7 +45,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   const [isUserListModalOpen, setIsUserListModalOpen] = useState(false);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [countdownEvent, setCountdownEvent] = useState<any>(null);
-
+  
   // Data State
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -156,7 +156,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
       const interval = setInterval(() => {
         getNearbyUsers(lat, lng, parseInt(shareRadius));
       }, 5000);
-
+      
       return () => clearInterval(interval);
     }
   }, [lat, lng, isConnected, shareRadius, getNearbyUsers]);
@@ -165,7 +165,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
     const newGhostMode = !isGhostMode;
     setIsGhostMode(newGhostMode);
     toggleGhostMode(newGhostMode);
-
+    
     toast({
       title: newGhostMode ? "Ghost Mode Enabled" : "Ghost Mode Disabled",
       description: newGhostMode 
@@ -237,7 +237,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
     const targetUser = nearbyUsers.find(u => u.id === userId);
     if (targetUser && lat && lng) {
       const startTime = new Date(Date.now() + 30000); // 30 seconds from now
-
+      
       createEvent({
         eventType: "sprint",
         startTime,
@@ -286,51 +286,6 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
       isGhostMode: isGhostMode
     });
   }
-
-  // Location permission modal
-  const [showLocationModal, setShowLocationModal] = useState(false);
-
-  // Navigation handlers
-  const handleStartNavigation = async () => {
-    console.log("Start Navigation Clicked!");
-
-    if (!currentRoute && alternativeRoutes.length === 0) {
-      toast.error("No route selected! Please plan a route first.");
-      return;
-    }
-
-    if (!lat || !lng) {
-      toast.error("GPS location required for navigation!");
-      return;
-    }
-
-    try {
-      const routeToUse = currentRoute || alternativeRoutes[0];
-      const success = await startNavigationWithRoute(routeToUse);
-
-      if (success) {
-        toast.success("Navigation started!");
-      } else {
-        toast.error("Failed to start navigation. Please try again.");
-      }
-    } catch (error) {
-      console.error('Navigation start error:', error);
-      toast.error("Navigation failed to start. Check your connection.");
-    }
-  };
-
-  const handleStopNavigation = () => {
-    stopNavigation();
-    toast.success("Navigation stopped");
-  };
-
-  useEffect(() => {
-    if (lat === null && lng === null && !locationError) {
-      setShowLocationModal(true);
-    } else if (lat !== null && lng !== null) {
-      setShowLocationModal(false);
-    }
-  }, [lat, lng, locationError]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
