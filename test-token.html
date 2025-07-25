@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mapbox Token Test - GhostRacer</title>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+  <style>
+    body { 
+      margin: 0; 
+      font-family: Arial, sans-serif; 
+      background: #1a1a1a; 
+      color: white; 
+    }
+    #debug { 
+      position: absolute; 
+      top: 10px; 
+      left: 10px; 
+      z-index: 1000;
+      background: rgba(0,0,0,0.9); 
+      color: white; 
+      padding: 15px; 
+      border-radius: 8px; 
+      max-width: 400px; 
+      font-size: 14px; 
+      border: 1px solid #333; 
+    }
+    #map { 
+      position: absolute; 
+      top: 0; 
+      bottom: 0; 
+      width: 100%; 
+    }
+    .success { color: #4ade80; }
+    .error { color: #ef4444; }
+    .info { color: #3b82f6; }
+  </style>
+</head>
+<body>
+  <div id="debug">
+    <div>🗺️ MAPBOX TOKEN TEST - GHOSTRACER</div>
+    <div id="status">Initializing...</div>
+  </div>
+  <div id="map"></div>
+  
+  <script>
+    const debug = document.getElementById('status');
+    const token = 'pk.eyJ1IjoiczR6b28iLCJhIjoiY21kaHZ1dW45MDV4MjJpb3NxOWl1OHJ2dCJ9.rSxPZ2e6JWgc0Uj12cjKRA';
+    
+    debug.innerHTML = `<div class="info">Token: ${token.substring(0, 25)}...</div><div class="info">Testing API connectivity...</div>`;
+    
+    // Test 1: API availability
+    fetch(`https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${token}`)
+      .then(response => {
+        debug.innerHTML += `<div class="info">API Status: ${response.status}</div>`;
+        if (response.ok) {
+          debug.innerHTML += '<div class="success">✅ API accessible</div>';
+          
+          // Test 2: Create map
+          try {
+            mapboxgl.accessToken = token;
+            debug.innerHTML += '<div class="success">✅ Token set</div>';
+            
+            const map = new mapboxgl.Map({
+              container: 'map',
+              style: 'mapbox://styles/mapbox/dark-v11',
+              center: [-74.006, 40.7128], // NYC
+              zoom: 13
+            });
+            
+            debug.innerHTML += '<div class="success">✅ Map created</div>';
+            
+            map.on('load', () => {
+              debug.innerHTML += '<div class="success">🎉 MAP LOADED SUCCESSFULLY!</div>';
+              debug.innerHTML += '<div class="info">✨ GhostRacer map integration working!</div>';
+              console.log('✅ SUCCESS: Map loaded for GhostRacer');
+            });
+            
+            map.on('error', (e) => {
+              debug.innerHTML += `<div class="error">❌ Map error: ${e.error.message}</div>`;
+              console.error('❌ Map error:', e);
+            });
+            
+          } catch (error) {
+            debug.innerHTML += `<div class="error">❌ Map creation error: ${error.message}</div>`;
+            console.error('❌ Map creation error:', error);
+          }
+          
+        } else {
+          debug.innerHTML += '<div class="error">❌ API failed</div>';
+          response.text().then(text => {
+            debug.innerHTML += `<div class="error">Response: ${text.substring(0, 200)}</div>`;
+          });
+        }
+      })
+      .catch(error => {
+        debug.innerHTML += `<div class="error">❌ Network error: ${error.message}</div>`;
+        console.error('❌ Network error:', error);
+      });
+  </script>
+</body>
+</html>
