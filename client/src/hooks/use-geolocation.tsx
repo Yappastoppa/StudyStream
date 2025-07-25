@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
 interface GeolocationState {
@@ -27,58 +28,128 @@ export function useGeolocation({
   onLocationUpdate
 }: UseGeolocationOptions = {}) {
   const [state, setState] = useState<GeolocationState>({
-    lat: null, lng: null, accuracy: null,
-    speed: null, heading: null,
-    error: null, isLoading: false
+    lat: null,
+    lng: null,
+    accuracy: null,
+    speed: null,
+    heading: null,
+    error: null,
+    isLoading: false
   });
+
   const [watchId, setWatchId] = useState<number | null>(null);
-  const hasTriedRealGPS = useRef(false);
+  const [hasTriedRealGPS, setHasTriedRealGPS] = useState(false);
 
-  const options: PositionOptions = { enableHighAccuracy, timeout, maximumAge };
+  const options: PositionOptions = {
+    enableHighAccuracy,
+    timeout,
+    maximumAge
+  };
 
-  const updatePosition = useCallback((pos: GeolocationPosition) => {
-    const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-
-    console.log('📍 LIVE GPS UPDATE:', { lat: latitude, lng: longitude, speed, heading });
-
+  const updatePosition = useCallback((position: GeolocationPosition) => {
+    const { latitude, longitude, accuracy, speed, heading } = position.coords;
+    
     setState({
       lat: latitude,
       lng: longitude,
       accuracy,
-      speed: speed != null ? Math.max(0, speed * 3.6) : null,
+      speed: speed ? Math.max(0, speed * 3.6) : null, // Convert m/s to km/h
       heading,
       error: null,
       isLoading: false
     });
 
-    onLocationUpdate?.(pos);
+    onLocationUpdate?.(position);
   }, [onLocationUpdate]);
 
-  const handleError = useCallback((err: GeolocationPositionError) => {
-    let msg = 'Unknown geolocation error';
-    switch (err.code) {
-      case err.PERMISSION_DENIED:
-        msg = 'Permission denied. Enable location access.';
-        toast.error(msg, { id: 'geo-error' });
+  const handleError = useCallback((error: GeolocationPositionError) => {
+    let errorMessage = 'Unknown error occurred';
+    
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        errorMessage = 'Location permission denied. Please enable location access.';
+        toast.error('Location access denied. Please check your browser settings.');
         break;
-      case err.POSITION_UNAVAILABLE:
-        msg = 'GPS unavailable. Try again.';
-        toast.error(msg, { id: 'geo-error' });
+      case error.POSITION_UNAVAILABLE:
+        errorMessage = 'Location information unavailable.';
+        toast.error('GPS signal unavailable. Please try again.');
         break;
-      case err.TIMEOUT:
-        msg = 'GPS timeout. Retrying…';
-        toast.error(msg, { id: 'geo-error' });
+      case error.TIMEOUT:
+        errorMessage = 'Location request timed out.';
+        toast.error('GPS timeout. Retrying...');
         break;
     }
-    setState(s => ({ ...s, error: msg, isLoading: false }));
+
+    setState(prev => ({
+      ...prev,
+      error: errorMessage,
+      isLoading: false
+    }));
   }, []);
 
-  const startSimulation = useCallback(() => {
-    console.log('🔥 GPS simulation active - Creating live pin at NYC coordinates');
-    toast.success('GPS simulation active - Live tracking enabled', { id: 'geo-loading' });
+  const getCurrentPosition = useCallback(() => {
+    if (!navigator.geolocation) {
+      setState(prev => ({
+        ...prev,
+        error: 'Geolocation is not supported by this browser.',
+        isLoading: false
+      }));
+      toast.error('Location services not supported by this browser.');
+      return;
+    }
 
-    // Set initial NYC coordinates
-    const initialState = {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    toast.loading('Getting your location...', { id: 'location-loading' });
+
+    // Add timeout for permission prompt
+    const permissionTimeout = setTimeout(() => {
+      if (state.isLoading) {
+        toast.error('Location permission required. Please allow location access when prompted.', { id: 'location-loading' });
+      }
+    }, 2000);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        clearTimeout(permissionTimeout);
+        updatePosition(position);
+        setHasTriedRealGPS(true);
+        toast.success('Location found!', { id: 'location-loading' });
+        
+        // Start watching for updates if requested
+        if (watchPosition) {
+          startWatching();
+        }
+      },
+      (error) => {
+        clearTimeout(permissionTimeout);
+        handleError(error);
+        setHasTriedRealGPS(true);
+        toast.dismiss('location-loading');
+        
+        // Only use simulation if permission was denied or unavailable
+        if (error.code === error.PERMISSION_DENIED || error.code === error.POSITION_UNAVAILABLE) {
+          console.log('Real GPS failed, using simulation:', error);
+          startSimulation();
+        }
+      },
+      {
+        ...options,
+        timeout: 10000 // Increase timeout for permission prompt
+      }
+    );
+  }, [updatePosition, handleError, options, watchPosition, state.isLoading]);
+
+  const startSimulation = useCallback(() => {
+    console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
+    
+    let simulationInterval: NodeJS.Timeout;
+    let currentSpeed = 0;
+    let targetSpeed = 0;
+    let timeAccumulator = 0;
+    let stoppedTime = 0;
+    
+    // Initial position - immediate startup
+    setState({
       lat: 40.7128,
       lng: -74.0060,
       accuracy: 10,
@@ -86,90 +157,69 @@ export function useGeolocation({
       heading: Math.random() * 360,
       error: null,
       isLoading: false
-    };
-
-    setState(initialState);
-
-    // Trigger location update for live pin creation
-    onLocationUpdate?.({
-      coords: {
-        latitude: initialState.lat,
-        longitude: initialState.lng,
-        accuracy: initialState.accuracy,
-        speed: initialState.speed,
-        heading: initialState.heading,
-        altitude: null,
-        altitudeAccuracy: null
-      },
-      timestamp: Date.now()
-    } as GeolocationPosition);
-
-    let curSpd = 0, tgtSpd = 0, stopTime = 0;
-    const iv = setInterval(() => {
-      if (Math.random() < 0.01) tgtSpd = Math.random() * 120;
-      curSpd += (tgtSpd - curSpd) * 0.05;
-      let disp = curSpd < 2
-        ? (stopTime += 0.5) > 1 ? (curSpd = 0, 0) : curSpd + (Math.random() - 0.5) * 0.3
-        : (stopTime = 0, curSpd + (Math.random() - 0.5) * 0.8);
-
-      setState(s => ({ 
-        ...s, 
-        speed: Math.max(0, disp),
-        heading: s.heading ? s.heading + (Math.random() - 0.5) * 2 : Math.random() * 360
-      }));
-    }, 500);
-
-    return () => clearInterval(iv);
-  }, [onLocationUpdate]);
-
-  const getCurrentPosition = useCallback(() => {
-    if (!navigator.geolocation) {
-      setState(s => ({ ...s, error: 'Browser geolocation unsupported.' }));
-      toast.error('Geolocation unsupported', { id: 'geo-error' });
-      startSimulation(); // Fallback to simulation
-      return Promise.resolve('denied');
-    }
-
-    setState(s => ({ ...s, isLoading: true, error: null }));
-    toast.loading('Getting your location…', { id: 'geo-loading' });
-
-    return new Promise<PermissionState>((resolve) => {
-      // Timeout for mobile Safari and Replit iframe issues
-      const permTimer = setTimeout(() => {
-        console.log('🔥 GPS permission timeout - using simulation mode');
-        toast.success('Using simulation mode for development', { id: 'geo-loading' });
-        hasTriedRealGPS.current = true;
-        startSimulation();
-        resolve('denied');
-      }, 3000);
-
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          clearTimeout(permTimer);
-          updatePosition(pos);
-          toast.success('Real GPS location found! Live pin active', { id: 'geo-loading' });
-          hasTriedRealGPS.current = true;
-          if (watchPosition) startWatching();
-          resolve('granted');
-        },
-        err => {
-          clearTimeout(permTimer);
-          console.log('GPS error:', err.code, err.message);
-          handleError(err);
-          toast.success('Using simulation mode - Live pin active', { id: 'geo-loading' });
-          hasTriedRealGPS.current = true;
-          startSimulation();
-          resolve('denied');
-        },
-        { ...options, timeout: 2500 }
-      );
     });
-  }, [handleError, options, startWatching, startSimulation, updatePosition, watchPosition]);
+    
+    toast.success('GPS simulation active');
+    
+    // Start speed simulation with less frequent updates to reduce jitter
+    simulationInterval = setInterval(() => {
+      timeAccumulator += 0.5;
+      
+      // Change target speed every 5-10 seconds
+      if (Math.random() < 0.01) {
+        targetSpeed = Math.random() * 120; // 0-120 km/h
+      }
+      
+      // Smooth acceleration/deceleration
+      const speedDiff = targetSpeed - currentSpeed;
+      currentSpeed += speedDiff * 0.05; // Slower adjustment for smoother changes
+      
+      // Handle stopped state more realistically
+      let displaySpeed = currentSpeed;
+      
+      if (currentSpeed < 2) {
+        stoppedTime += 0.5;
+        // When nearly stopped, reduce to exactly 0 after brief moment
+        if (stoppedTime > 1) {
+          displaySpeed = 0;
+          currentSpeed = 0;
+        } else {
+          // Small random jitter when coming to stop
+          displaySpeed = Math.max(0, currentSpeed + (Math.random() - 0.5) * 0.3);
+        }
+      } else {
+        stoppedTime = 0;
+        // Reduced variation when moving to prevent jitter
+        const variation = (Math.random() - 0.5) * 0.8;
+        displaySpeed = Math.max(0, currentSpeed + variation);
+      }
+      
+      setState(prev => ({
+        ...prev,
+        speed: displaySpeed,
+        heading: displaySpeed > 2 ? 
+          (prev.heading || 0) + (Math.random() - 0.5) * (displaySpeed > 30 ? 2 : 0.5) :
+          prev.heading // Don't change heading when stopped
+      }));
+    }, 500); // Update every 500ms instead of 100ms to reduce jitter
+    
+    return () => {
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+      }
+    };
+  }, []);
 
   const startWatching = useCallback(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setState(prev => ({
+        ...prev,
+        error: 'Geolocation is not supported by this browser.'
+      }));
+      return;
+    }
 
-    if (watchId != null) {
+    if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
     }
 
@@ -178,15 +228,16 @@ export function useGeolocation({
       handleError,
       options
     );
+
     setWatchId(id);
-  }, [handleError, options, updatePosition]);
+  }, [updatePosition, handleError, options, watchId]);
 
   const stopWatching = useCallback(() => {
-    if (watchId != null) {
+    if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
       setWatchId(null);
     }
-    setState(s => ({ ...s, isLoading: false }));
+    setState(prev => ({ ...prev, isLoading: false }));
   }, [watchId]);
 
   const requestPermission = useCallback(async () => {
@@ -198,26 +249,45 @@ export function useGeolocation({
         console.error('Error checking geolocation permission:', error);
       }
     }
-
+    
     // Fallback: try to get current position to trigger permission request
-    return getCurrentPosition();
-  }, [getCurrentPosition]);
+    return new Promise<PermissionState>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        () => resolve('granted'),
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            resolve('denied');
+          } else {
+            resolve('prompt');
+          }
+        },
+        { timeout: 1000 }
+      );
+    });
+  }, []);
 
-  // keep loading toast up to 3s
+  // Show loading spinner if taking too long
   useEffect(() => {
     if (state.isLoading) {
-      const t = setTimeout(() => {
-        if (state.isLoading) toast.loading('Still searching…', { id: 'geo-slow' });
+      const loadingTimer = setTimeout(() => {
+        if (state.isLoading) {
+          toast.loading('Still searching for location...', { id: 'location-slow' });
+        }
       }, 3000);
-      return () => clearTimeout(t);
+
+      return () => clearTimeout(loadingTimer);
     } else {
-      toast.dismiss('geo-slow');
+      toast.dismiss('location-slow');
     }
   }, [state.isLoading]);
 
-  // cleanup
-  useEffect(() => () => {
-    if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, [watchId]);
 
   return {
@@ -226,7 +296,7 @@ export function useGeolocation({
     startWatching,
     stopWatching,
     requestPermission,
-    isWatching: watchId != null,
-    hasTriedRealGPS: hasTriedRealGPS.current
+    isWatching: watchId !== null,
+    hasTriedRealGPS
   };
 }
