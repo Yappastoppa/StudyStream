@@ -6,17 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Activity, TrendingUp, Clock, Users } from 'lucide-react';
 
 interface RouteHeatmapProps {
-  isVisible: boolean;
-  onToggle: () => void;
-  className?: string;
   map: any;
+  isActive: boolean;
+  className?: string;
 }
 
 export function RouteHeatmap({ 
-  isVisible, 
-  onToggle,
-  className = "",
-  map
+  map,
+  isActive,
+  className = ""
 }: RouteHeatmapProps) {
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
   const [timeFilter, setTimeFilter] = useState('24h');
@@ -24,7 +22,7 @@ export function RouteHeatmap({
   useEffect(() => {
     if (!map) return;
     
-    if (!isVisible) {
+    if (!isActive) {
       // Remove heatmap layer when inactive
       if (map.getLayer && map.getLayer('racing-heatmap')) {
         map.removeLayer('racing-heatmap');
@@ -142,7 +140,7 @@ export function RouteHeatmap({
         map.removeSource('racing-heatmap');
       }
     };
-  }, [map, isVisible]);
+  }, [map, isActive]);
 
   return (
     <div className={`${className}`}>
@@ -154,9 +152,10 @@ export function RouteHeatmap({
               Traffic Heatmap
             </div>
             <Switch
-              checked={isVisible}
-              onCheckedChange={onToggle}
+              checked={isActive}
+              onCheckedChange={() => {}}
               className="scale-75"
+              disabled
             />
           </CardTitle>
         </CardHeader>
