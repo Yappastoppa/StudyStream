@@ -24,6 +24,9 @@ interface FixedMapProps {
 }
 
 export function FixedMap(props: FixedMapProps) {
+  console.log("🔥 MAP COMPONENT LOADED!");
+  console.log("Mapbox token (env):", import.meta.env.VITE_MAPBOX_TOKEN);
+  
   // 🔥 FORCE NYC LOCATION FOR TESTING
   const center = props?.center || [-74.006, 40.7128]; // NYC coordinates
   const zoom = props?.zoom || 13;
@@ -58,10 +61,24 @@ export function FixedMap(props: FixedMapProps) {
   }, []);
 
   useEffect(() => {
+    console.log("🔥 MAP USEEFFECT TRIGGERED!");
+    console.log("🔥 mapContainer.current:", !!mapContainer.current);
+    console.log("🔥 map.current:", !!map.current);
+    
+    // Add a small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      console.log("🔥 AFTER TIMEOUT - mapContainer.current:", !!mapContainer.current);
+      if (mapContainer.current) {
+        initializeMap();
+      }
+    }, 500); // Longer delay
+    
     let timeoutId: NodeJS.Timeout;
     let isComponentMounted = true;
 
     const initializeMap = async () => {
+      console.log('🔥 INITIALIZE MAP FUNCTION CALLED!');
+      console.log("🔥 CHECKING CONTAINER AGAIN:", !!mapContainer.current);
       // 🔥 TEMPORARILY BYPASS TOKEN CHECK TO TEST MAPBOX LOADING
       console.log('🔥 FORCING MAPBOX LOAD TEST - bypassing token validation');
       
@@ -74,7 +91,13 @@ export function FixedMap(props: FixedMapProps) {
         return;
       }
 
-      if (!mapContainer.current || map.current) return;
+      if (!mapContainer.current || map.current) {
+        console.log('🔥 EARLY RETURN:', { 
+          hasContainer: !!mapContainer.current, 
+          hasMap: !!map.current 
+        });
+        return;
+      }
 
       // Set 10-second timeout
       timeoutId = setTimeout(() => {
@@ -88,15 +111,19 @@ export function FixedMap(props: FixedMapProps) {
       }, 10000);
 
       try {
+        console.log('🔥 ABOUT TO IMPORT MAPBOX!');
         // Dynamic import of Mapbox
         const mapboxgl = await import('mapbox-gl');
+        console.log('🔥 MAPBOX IMPORTED SUCCESSFULLY!');
 
         // Set access token
+        console.log('🔥 SETTING MAPBOX TOKEN:', MAPBOX_TOKEN?.substring(0, 10) + '...');
         mapboxgl.default.accessToken = MAPBOX_TOKEN;
 
         if (!isComponentMounted) return;
 
         // Create map instance
+        console.log('🔥 CREATING MAPBOX MAP INSTANCE!', { center, zoom });
         map.current = new mapboxgl.default.Map({
           container: mapContainer.current!,
           style: 'mapbox://styles/mapbox/dark-v11',
@@ -161,10 +188,9 @@ export function FixedMap(props: FixedMapProps) {
       }
     };
 
-    initializeMap();
-
     // Cleanup function
     return () => {
+      clearTimeout(timer);
       isComponentMounted = false;
       clearTimeout(timeoutId);
       if (map.current) {
@@ -177,7 +203,7 @@ export function FixedMap(props: FixedMapProps) {
       }
       markersRef.current.clear();
     };
-  }, [center, zoom, onMapClick, hasValidToken, MAPBOX_TOKEN]);
+  }, []); // Remove all dependencies to stop re-render loop
 
   // Update markers when locations change
   useEffect(() => {
@@ -362,11 +388,22 @@ export function FixedMap(props: FixedMapProps) {
     </div>
   );
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className={`relative ${className} bg-racing-dark`}>
-        <div className="w-full h-full flex items-center justify-center" style={{ minHeight: '400px' }}>
+  // Always render the map container, show loading overlay instead
+  console.log("🔥 RENDER - isLoading:", isLoading, "showFallback:", showFallback);
+  console.log("🔥 RENDER - hasValidToken:", hasValidToken, "MAPBOX_TOKEN exists:", !!MAPBOX_TOKEN);
+
+  return (
+    <div className={`relative ${className}`}>
+      {/* Always render map container so ref gets attached */}
+      <div
+        ref={mapContainer}
+        className="w-full h-full"
+        style={{ minHeight: '400px' }}
+      />
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-racing-dark flex items-center justify-center z-10">
           <div className="text-center text-white">
             <div className="w-8 h-8 border-2 border-racing-blue border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-sm">
@@ -374,25 +411,18 @@ export function FixedMap(props: FixedMapProps) {
             </p>
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className={`relative ${className}`}>
-      {showFallback ? (
-        <RacingFallback />
-      ) : (
-        <div
-          ref={mapContainer}
-          className="w-full h-full"
-          style={{ minHeight: '400px' }}
-        />
+      {/* Fallback overlay */}
+      {showFallback && (
+        <div className="absolute inset-0 z-10">
+          <RacingFallback />
+        </div>
       )}
 
       {/* GPS Active indicator when map is loaded */}
       {isMapLoaded && !showFallback && !mapError && (
-        <div className="absolute top-4 left-4 bg-racing-charcoal/90 backdrop-blur-sm rounded-lg p-3 text-white text-sm">
+        <div className="absolute top-4 left-4 bg-racing-charcoal/90 backdrop-blur-sm rounded-lg p-3 text-white text-sm z-20">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
             <span>GPS Active</span>

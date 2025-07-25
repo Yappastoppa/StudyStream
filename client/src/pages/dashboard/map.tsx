@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FixedMap } from "@/components/ui/fixed-map";
+import { SimpleMap } from "@/components/ui/simple-map";
 import { SpeedHud } from "@/components/racing/speed-hud";
 import { ActionButtons } from "@/components/racing/action-buttons";
 import { SideMenu } from "@/components/racing/side-menu";
@@ -31,6 +31,7 @@ interface NearbyUser {
 }
 
 export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
+  console.log("🔥 MAP PAGE COMPONENT LOADED!");
   const { toast } = useToast();
   
   // UI State
@@ -284,12 +285,9 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
       {/* Map Container */}
-      <FixedMap
-        center={lat && lng ? [lng, lat] : undefined}
+      <SimpleMap
+        center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}
         zoom={15}
-        onMapClick={(lng, lat) => console.log('Map clicked:', lng, lat)}
-        userLocations={mapUserLocations}  
-        alerts={alerts}
         className="absolute inset-0"
       />
 
