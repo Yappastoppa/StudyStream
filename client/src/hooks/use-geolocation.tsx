@@ -95,49 +95,60 @@ export function useGeolocation({
         isLoading: false
       }));
       toast.error('Location services not supported by this browser.');
-      return;
+      return Promise.resolve('denied');
     }
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     toast.loading('Getting your location...', { id: 'location-loading' });
 
-    // Add timeout for permission prompt
-    const permissionTimeout = setTimeout(() => {
-      if (state.isLoading) {
-        toast.error('Location permission required. Please allow location access when prompted.', { id: 'location-loading' });
-      }
-    }, 2000);
+    return new Promise<PermissionState>((resolve) => {
+      // Mobile Safari timeout - if no response in 3 seconds, assume permission issue
+      const mobileTimeout = setTimeout(() => {
+        console.log('🔥 Mobile Safari GPS timeout - using simulation mode');
+        toast.success('Using simulation mode for development', { id: 'location-loading' });
+        setHasTriedRealGPS(true);
+        startSimulation();
+        resolve('denied');
+      }, 3000);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        clearTimeout(permissionTimeout);
-        updatePosition(position);
-        setHasTriedRealGPS(true);
-        toast.success('Location found!', { id: 'location-loading' });
-        
-        // Start watching for updates if requested
-        if (watchPosition) {
-          startWatching();
-        }
-      },
-      (error) => {
-        clearTimeout(permissionTimeout);
-        handleError(error);
-        setHasTriedRealGPS(true);
-        toast.dismiss('location-loading');
-        
-        // Only use simulation if permission was denied or unavailable
-        if (error.code === error.PERMISSION_DENIED || error.code === error.POSITION_UNAVAILABLE) {
-          console.log('Real GPS failed, using simulation:', error);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          clearTimeout(mobileTimeout);
+          updatePosition(position);
+          setHasTriedRealGPS(true);
+          toast.success('Real GPS location found!', { id: 'location-loading' });
+          
+          // Start watching for updates if requested
+          if (watchPosition) {
+            startWatching();
+          }
+          resolve('granted');
+        },
+        (error) => {
+          clearTimeout(mobileTimeout);
+          console.log('GPS error:', error.code, error.message);
+          
+          // Always fall back to simulation on mobile
+          if (error.code === error.PERMISSION_DENIED) {
+            toast.success('Using simulation mode', { id: 'location-loading' });
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            toast.success('GPS unavailable - using simulation', { id: 'location-loading' });
+          } else {
+            toast.success('GPS timeout - using simulation', { id: 'location-loading' });
+          }
+          
+          setHasTriedRealGPS(true);
           startSimulation();
+          resolve('denied');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 2500, // Shorter timeout for mobile
+          maximumAge: 60000 // Accept cached location up to 1 minute old
         }
-      },
-      {
-        ...options,
-        timeout: 10000 // Increase timeout for permission prompt
-      }
-    );
-  }, [updatePosition, handleError, options, watchPosition, state.isLoading]);
+      );
+    });
+  }, [updatePosition, handleError, options, watchPosition]);
 
   const startSimulation = useCallback(() => {
     console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
@@ -148,7 +159,7 @@ export function useGeolocation({
     let timeAccumulator = 0;
     let stoppedTime = 0;
     
-    // Initial position - immediate startup
+    // Initial position - NYC area (matches your screenshots)
     setState({
       lat: 40.7128,
       lng: -74.0060,
