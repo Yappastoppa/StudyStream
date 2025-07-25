@@ -153,11 +153,11 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       url += `&access_token=${mapboxToken}`;
 
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
@@ -532,32 +532,32 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
         try {
           const profile = options.profile;
           const coordinates = `${start[0]},${start[1]};${end[0]},${end[1]}`;
-    
+
           let url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}`;
           url += '?geometries=geojson&steps=true&voice_instructions=true&banner_instructions=true&alternatives=true';
-    
+
           // Add route options
           const excludeParams = [];
           if (options.avoidHighways) excludeParams.push('motorway');
           if (options.avoidTolls) excludeParams.push('toll');
           if (options.avoidFerries) excludeParams.push('ferry');
-    
+
           if (excludeParams.length > 0) {
             url += `&exclude=${excludeParams.join(',')}`;
           }
-    
+
           url += `&access_token=${mapboxToken}`;
-    
+
           const response = await fetch(url);
           const data = await response.json();
-    
+
           if (data.routes && data.routes.length > 0) {
             return data.routes.map((route: any, index: number) => ({
               ...route,
               id: `route_${index}_${Date.now()}`
             }));
           }
-    
+
           return [];
         } catch (error) {
           console.error('Failed to get route alternatives:', error);
@@ -565,29 +565,29 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
           return [];
         }
       }, [mapboxToken]);
-    
+
       // Display multiple routes on map
       const displayRoutesOnMap = useCallback((routes: NavigationRoute[]) => {
         if (!map) return;
-    
+
         // Clear existing routes
         clearRoutesFromMap();
-    
+
         routes.forEach((route, index) => {
           const sourceId = `route-${index}`;
           const layerId = `route-line-${index}`;
           const glowLayerId = `route-glow-${index}`;
-    
+
           // Route colors: main route (blue), alternative 1 (green), alternative 2 (orange)
           const colors = ['#3B82F6', '#10B981', '#F59E0B'];
           const color = colors[index] || '#6B7280';
-    
+
           if (map.getSource(sourceId)) {
             map.removeLayer(glowLayerId);
             map.removeLayer(layerId);
             map.removeSource(sourceId);
           }
-    
+
           map.addSource(sourceId, {
             type: 'geojson',
             data: {
@@ -596,7 +596,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
               geometry: route.geometry
             }
           });
-    
+
           // Add glow effect
           map.addLayer({
             id: glowLayerId,
@@ -609,7 +609,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
               'line-blur': 3
             }
           });
-    
+
           // Add main route line
           map.addLayer({
             id: layerId,
@@ -622,49 +622,49 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
             }
           });
         });
-    
+
         // Fit map to show all routes
         if (routes.length > 0) {
           const coordinates = routes[0].geometry.coordinates;
           const bounds = coordinates.reduce((bounds, coord) => {
             return bounds.extend(coord as [number, number]);
           }, new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
-    
+
           map.fitBounds(bounds, { padding: 100 });
         }
       }, [map]);
-    
+
       // Clear routes from map
       const clearRoutesFromMap = useCallback(() => {
         if (!map) return;
-    
+
         for (let i = 0; i < 5; i++) {
           const sourceId = `route-${i}`;
           const layerId = `route-line-${i}`;
           const glowLayerId = `route-glow-${i}`;
-    
+
           if (map.getLayer(glowLayerId)) map.removeLayer(glowLayerId);
           if (map.getLayer(layerId)) map.removeLayer(layerId);
           if (map.getSource(sourceId)) map.removeSource(sourceId);
         }
       }, [map]);
-    
+
       // Display single selected route
       const displaySingleRoute = useCallback((route: NavigationRoute) => {
         if (!map) return;
-    
+
         clearRoutesFromMap();
-    
+
         const sourceId = 'selected-route';
         const layerId = 'selected-route-line';
         const glowLayerId = 'selected-route-glow';
-    
+
         if (map.getSource(sourceId)) {
           map.removeLayer(glowLayerId);
           map.removeLayer(layerId);
           map.removeSource(sourceId);
         }
-    
+
         map.addSource(sourceId, {
           type: 'geojson',
           data: {
@@ -673,7 +673,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
             geometry: route.geometry
           }
         });
-    
+
         // Add glow effect
         map.addLayer({
           id: glowLayerId,
@@ -686,7 +686,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
             'line-blur': 3
           }
         });
-    
+
         // Add main route line
         map.addLayer({
           id: layerId,

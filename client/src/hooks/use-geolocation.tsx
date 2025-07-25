@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 
 interface GeolocationState {
   lat: number | null;
@@ -65,12 +66,15 @@ export function useGeolocation({
     switch (error.code) {
       case error.PERMISSION_DENIED:
         errorMessage = 'Location permission denied. Please enable location access.';
+        toast.error('Location access denied. Please check your browser settings.');
         break;
       case error.POSITION_UNAVAILABLE:
         errorMessage = 'Location information unavailable.';
+        toast.error('GPS signal unavailable. Please try again.');
         break;
       case error.TIMEOUT:
         errorMessage = 'Location request timed out.';
+        toast.error('GPS timeout. Retrying...');
         break;
     }
 
@@ -159,75 +163,120 @@ export function useGeolocation({
   }, []);
 
   useEffect(() => {
-    // 🔥 ENHANCED SPEEDOMETER SIMULATION FOR TESTING
-    console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
-    
-    let simulationInterval: NodeJS.Timeout;
-    let currentSpeed = 0;
-    let targetSpeed = 0;
-    let timeAccumulator = 0;
-    let stoppedTime = 0;
-    
-    // Initial position
-    setTimeout(() => {
-      setState({
-        lat: 40.7128,
-        lng: -74.0060,
-        accuracy: 10,
-        speed: 0,
-        heading: Math.random() * 360,
-        error: null,
-        isLoading: false
-      });
-      
-      // Start speed simulation
-      simulationInterval = setInterval(() => {
-        timeAccumulator += 0.1;
+    // Try real GPS first, fallback to simulation
+    const attemptRealGPS = async () => {
+      try {
+        setState(prev => ({ ...prev, isLoading: true }));
+        toast.loading('Getting your location...', { id: 'location-loading' });
+
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          );
+        });
+
+        // Real GPS success
+        setState({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed: position.coords.speed ? Math.max(0, position.coords.speed * 3.6) : null,
+          heading: position.coords.heading,
+          error: null,
+          isLoading: false
+        });
+
+        toast.success('Location found!', { id: 'location-loading' });
         
-        // Change target speed every 3-8 seconds
-        if (Math.random() < 0.02) {
-          targetSpeed = Math.random() * 120; // 0-120 km/h
+        // Start watching for updates
+        if (watchPosition) {
+          startWatching();
         }
+
+      } catch (error: any) {
+        console.log('Real GPS failed, using simulation:', error);
+        toast.dismiss('location-loading');
         
-        // Smooth acceleration/deceleration
-        const speedDiff = targetSpeed - currentSpeed;
-        currentSpeed += speedDiff * 0.1; // 10% adjustment per update
+        // Fallback to simulation mode
+        console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
         
-        // Handle stopped state more realistically
-        let displaySpeed = currentSpeed;
+        let simulationInterval: NodeJS.Timeout;
+        let currentSpeed = 0;
+        let targetSpeed = 0;
+        let timeAccumulator = 0;
+        let stoppedTime = 0;
         
-        if (currentSpeed < 2) {
-          stoppedTime += 0.1;
-          // When nearly stopped, reduce to exactly 0 after brief moment
-          if (stoppedTime > 0.5) {
-            displaySpeed = 0;
-            currentSpeed = 0;
-          } else {
-            // Small random jitter when coming to stop
-            displaySpeed = Math.max(0, currentSpeed + (Math.random() - 0.5) * 0.5);
+        // Initial position - faster startup (200ms instead of 1000ms)
+        setTimeout(() => {
+          setState({
+            lat: 40.7128,
+            lng: -74.0060,
+            accuracy: 10,
+            speed: 0,
+            heading: Math.random() * 360,
+            error: null,
+            isLoading: false
+          });
+          
+          toast.success('GPS simulation active');
+          
+          // Start speed simulation
+          simulationInterval = setInterval(() => {
+            timeAccumulator += 0.1;
+            
+            // Change target speed every 3-8 seconds
+            if (Math.random() < 0.02) {
+              targetSpeed = Math.random() * 120; // 0-120 km/h
+            }
+            
+            // Smooth acceleration/deceleration
+            const speedDiff = targetSpeed - currentSpeed;
+            currentSpeed += speedDiff * 0.1; // 10% adjustment per update
+            
+            // Handle stopped state more realistically
+            let displaySpeed = currentSpeed;
+            
+            if (currentSpeed < 2) {
+              stoppedTime += 0.1;
+              // When nearly stopped, reduce to exactly 0 after brief moment
+              if (stoppedTime > 0.5) {
+                displaySpeed = 0;
+                currentSpeed = 0;
+              } else {
+                // Small random jitter when coming to stop
+                displaySpeed = Math.max(0, currentSpeed + (Math.random() - 0.5) * 0.5);
+              }
+            } else {
+              stoppedTime = 0;
+              // Normal driving variation only when moving
+              const variation = (Math.random() - 0.5) * 1.5;
+              displaySpeed = Math.max(0, currentSpeed + variation);
+            }
+            
+            setState(prev => ({
+              ...prev,
+              speed: displaySpeed,
+              heading: displaySpeed > 1 ? 
+                (prev.heading || 0) + (Math.random() - 0.5) * (displaySpeed > 20 ? 3 : 1) :
+                prev.heading // Don't change heading when stopped
+            }));
+          }, 100); // Update every 100ms for smooth speedometer
+          
+        }, 200); // Faster simulation startup - 200ms instead of 1000ms
+        
+        return () => {
+          if (simulationInterval) {
+            clearInterval(simulationInterval);
           }
-        } else {
-          stoppedTime = 0;
-          // Normal driving variation only when moving
-          const variation = (Math.random() - 0.5) * 1.5;
-          displaySpeed = Math.max(0, currentSpeed + variation);
-        }
-        
-        setState(prev => ({
-          ...prev,
-          speed: displaySpeed,
-          heading: displaySpeed > 1 ? 
-            (prev.heading || 0) + (Math.random() - 0.5) * (displaySpeed > 20 ? 3 : 1) :
-            prev.heading // Don't change heading when stopped
-        }));
-      }, 100); // Update every 100ms for smooth speedometer
-      
-    }, 1000); // Simulate 1 second GPS "acquisition"
+        };
+      }
+    };
+
+    attemptRealGPS();
     
     return () => {
-      if (simulationInterval) {
-        clearInterval(simulationInterval);
-      }
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
       }
