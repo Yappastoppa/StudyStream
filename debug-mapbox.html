@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mapbox Debug Test</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 400px; border: 2px solid #333; }
+        .debug-info { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>Mapbox Debug Test</h1>
+    
+    <div id="debug-info" class="debug-info">
+        <h3>Checking token...</h3>
+    </div>
+    
+    <div id="map"></div>
+    
+    <script>
+        const debugDiv = document.getElementById('debug-info');
+        
+        // Test token - replace with your actual token
+        const TOKEN = 'pk.eyJ1IjoiczR6b28iLCJhIjoiY21kaHJ2dW45MDV4MjJpb3NxOWl1OHJ2dCJ9.rSxPZ2e6JWgc0Uj12cjKRA';
+        
+        function updateDebug(message, isError = false) {
+            debugDiv.innerHTML = message;
+            debugDiv.className = isError ? 'debug-info error' : 'debug-info success';
+        }
+        
+        // Test 1: Token format validation
+        if (!TOKEN || !TOKEN.startsWith('pk.')) {
+            updateDebug('❌ Invalid token format. Token must start with "pk."', true);
+        } else {
+            updateDebug('✅ Token format looks correct');
+            
+            // Test 2: Token validation with Mapbox API
+            fetch(`https://api.mapbox.com/styles/v1/mapbox/streets-v11?access_token=${TOKEN}`)
+                .then(response => {
+                    if (response.ok) {
+                        updateDebug('✅ Token is valid. Initializing map...');
+                        initializeMap();
+                    } else {
+                        updateDebug(`❌ Token validation failed: ${response.status} ${response.statusText}`, true);
+                    }
+                })
+                .catch(error => {
+                    updateDebug(`❌ Network error: ${error.message}`, true);
+                });
+        }
+        
+        function initializeMap() {
+            try {
+                mapboxgl.accessToken = TOKEN;
+                
+                const map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/dark-v11',
+                    center: [-74.006, 40.7128], // NYC
+                    zoom: 13
+                });
+                
+                map.on('load', () => {
+                    updateDebug('✅ Map loaded successfully!');
+                });
+                
+                map.on('error', (e) => {
+                    updateDebug(`❌ Map error: ${e.error.message}`, true);
+                });
+                
+            } catch (error) {
+                updateDebug(`❌ Map initialization error: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
