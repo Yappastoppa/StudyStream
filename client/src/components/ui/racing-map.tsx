@@ -45,7 +45,7 @@ export function RacingMap({
 }: RacingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
-  
+
   // Map state
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [mapStyle, setMapStyle] = useState<'navigation' | 'satellite' | 'dark'>('dark');
@@ -64,24 +64,24 @@ export function RacingMap({
   const [showSimulation, setShowSimulation] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  
+
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-  
+
   // Map style configurations
   const mapStyles = {
     navigation: 'mapbox://styles/mapbox/navigation-day-v1',
     satellite: 'mapbox://styles/mapbox/satellite-streets-v12', 
     dark: 'mapbox://styles/mapbox/dark-v11'
   };
-  
+
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
-    
+
     const initMap = async () => {
       try {
         const mapboxgl = await import('mapbox-gl');
         mapboxgl.default.accessToken = MAPBOX_TOKEN;
-        
+
         map.current = new mapboxgl.default.Map({
           container: mapContainer.current!,
           style: mapStyles[mapStyle],
@@ -90,17 +90,17 @@ export function RacingMap({
           pitch: 0,
           bearing: 0
         });
-        
+
         map.current.on('load', () => {
           setIsMapLoaded(true);
           setupMapLayers();
           setupMapControls();
         });
-        
+
         // Route drawing and navigation functionality
         map.current.on('click', (e: any) => {
           const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-          
+
           if (isDrawingRoute) {
             setCurrentRoute(prev => [...prev, coords]);
             addRoutePoint(coords);
@@ -117,14 +117,14 @@ export function RacingMap({
             }
           }
         });
-        
+
       } catch (error) {
         console.error('Failed to initialize racing map:', error);
       }
     };
-    
+
     setTimeout(initMap, 100);
-    
+
     return () => {
       if (map.current) {
         map.current.remove();
@@ -132,16 +132,16 @@ export function RacingMap({
       }
     };
   }, []);
-  
+
   const setupMapLayers = () => {
     if (!map.current) return;
-    
+
     // Add traffic layer
     map.current.addSource('traffic', {
       type: 'vector',
       url: 'mapbox://mapbox.mapbox-traffic-v1'
     });
-    
+
     map.current.addLayer({
       id: 'traffic-congestion',
       type: 'line',
@@ -171,7 +171,7 @@ export function RacingMap({
         'line-blur': 1
       }
     });
-    
+
     // Add population density overlay (choropleth style)
     map.current.addSource('population-density', {
       type: 'geojson',
@@ -180,7 +180,7 @@ export function RacingMap({
         features: generateDensityData() // Simulated density data
       }
     });
-    
+
     map.current.addLayer({
       id: 'population-density',
       type: 'fill',
@@ -200,7 +200,7 @@ export function RacingMap({
         'fill-opacity': 0.6
       }
     });
-    
+
     // Add route drawing source
     map.current.addSource('current-route', {
       type: 'geojson',
@@ -209,7 +209,7 @@ export function RacingMap({
         features: []
       }
     });
-    
+
     map.current.addLayer({
       id: 'current-route',
       type: 'line',
@@ -220,21 +220,21 @@ export function RacingMap({
         'line-opacity': 0.9
       }
     });
-    
+
     // Add saved routes
     savedRoutes.forEach((route, index) => {
       addSavedRoute(route, index);
     });
   };
-  
+
   const setupMapControls = async () => {
     if (!map.current) return;
-    
+
     const mapboxgl = await import('mapbox-gl');
-    
+
     // Add navigation controls
     map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
-    
+
     // Add geolocate control
     map.current.addControl(
       new mapboxgl.default.GeolocateControl({
@@ -247,7 +247,7 @@ export function RacingMap({
       'top-right'
     );
   };
-  
+
   const generateDensityData = () => {
     // Generate simulated population density polygons
     const features = [];
@@ -255,13 +255,13 @@ export function RacingMap({
       [-74.1, 40.6], // SW
       [-73.9, 40.8]  // NE  
     ];
-    
+
     for (let i = 0; i < 20; i++) {
       const lng1 = bounds[0][0] + Math.random() * (bounds[1][0] - bounds[0][0]);
       const lat1 = bounds[0][1] + Math.random() * (bounds[1][1] - bounds[0][1]);
       const lng2 = lng1 + 0.02;
       const lat2 = lat1 + 0.02;
-      
+
       features.push({
         type: 'Feature',
         properties: {
@@ -279,13 +279,13 @@ export function RacingMap({
         }
       });
     }
-    
+
     return features;
   };
-  
+
   const addRoutePoint = (coords: [number, number]) => {
     if (!map.current) return;
-    
+
     const routeData = {
       type: 'FeatureCollection',
       features: [{
@@ -297,18 +297,18 @@ export function RacingMap({
         }
       }]
     };
-    
+
     map.current.getSource('current-route').setData(routeData);
   };
-  
+
   const addSavedRoute = (route: any, index: number) => {
     if (!map.current) return;
-    
+
     map.current.addSource(`saved-route-${index}`, {
       type: 'geojson',
       data: route.data
     });
-    
+
     // Glow effect with multiple layers
     map.current.addLayer({
       id: `saved-route-glow-${index}`,
@@ -321,7 +321,7 @@ export function RacingMap({
         'line-blur': 3
       }
     });
-    
+
     map.current.addLayer({
       id: `saved-route-${index}`,
       type: 'line',
@@ -333,18 +333,18 @@ export function RacingMap({
       }
     });
   };
-  
+
   const toggleMapStyle = (newStyle: 'navigation' | 'satellite' | 'dark') => {
     if (!map.current) return;
     setMapStyle(newStyle);
     map.current.setStyle(mapStyles[newStyle]);
-    
+
     // Restore layers after style change
     map.current.once('styledata', () => {
       setupMapLayers();
     });
   };
-  
+
   const toggleTraffic = () => {
     if (!map.current) return;
     const newVisibility = !showTraffic;
@@ -355,7 +355,7 @@ export function RacingMap({
       newVisibility ? 'visible' : 'none'
     );
   };
-  
+
   const toggleDensity = () => {
     if (!map.current) return;
     const newVisibility = !showDensity;
@@ -366,7 +366,7 @@ export function RacingMap({
       newVisibility ? 'visible' : 'none'
     );
   };
-  
+
   const zoomToOverview = () => {
     if (!map.current) return;
     map.current.flyTo({
@@ -376,10 +376,10 @@ export function RacingMap({
       bearing: 0
     });
   };
-  
+
   const finishRoute = () => {
     if (currentRoute.length < 2) return;
-    
+
     const newRoute = {
       name: `Route ${Date.now()}`,
       color: '#ff6b35',
@@ -395,30 +395,30 @@ export function RacingMap({
         }]
       }
     };
-    
+
     onRouteSelect?.(newRoute);
     setIsDrawingRoute(false);
     setCurrentRoute([]);
-    
+
     // Clear current route display
     map.current?.getSource('current-route').setData({
       type: 'FeatureCollection',
       features: []
     });
   };
-  
+
   const addNavigationMarker = async (coords: [number, number], type: 'start' | 'end') => {
     if (!map.current) return;
-    
+
     const mapboxgl = await import('mapbox-gl');
-    
+
     // Remove existing marker if any
     const markerId = `navigation-${type}`;
     const existingMarker = (map.current as any)[markerId];
     if (existingMarker) {
       existingMarker.remove();
     }
-    
+
     // Create custom marker element
     const el = document.createElement('div');
     el.className = 'navigation-marker';
@@ -427,7 +427,7 @@ export function RacingMap({
     el.style.borderRadius = '50%';
     el.style.border = '3px solid white';
     el.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
-    
+
     if (type === 'start') {
       el.style.backgroundColor = '#00ff88';
       el.innerHTML = '<div style="color: black; font-weight: bold; text-align: center; line-height: 24px;">A</div>';
@@ -435,30 +435,30 @@ export function RacingMap({
       el.style.backgroundColor = '#ff0033';
       el.innerHTML = '<div style="color: white; font-weight: bold; text-align: center; line-height: 24px;">B</div>';
     }
-    
+
     const marker = new mapboxgl.default.Marker(el)
       .setLngLat(coords)
       .addTo(map.current);
-    
+
     // Store marker reference
     (map.current as any)[markerId] = marker;
   };
-  
+
   const calculateNavigationRoute = async (start: [number, number], end: [number, number]) => {
     if (!map.current || !MAPBOX_TOKEN) return;
-    
+
     try {
       const response = await fetch(
         `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${start.join(',')};${end.join(',')}?` +
         `geometries=geojson&steps=true&access_token=${MAPBOX_TOKEN}&overview=full&annotations=distance,duration,speed`
       );
-      
+
       const data = await response.json();
-      
+
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         setNavigationRoute(route);
-        
+
         // Add route to map
         if (map.current.getSource('navigation-route')) {
           (map.current.getSource('navigation-route') as any).setData({
@@ -475,7 +475,7 @@ export function RacingMap({
               geometry: route.geometry
             }
           });
-          
+
           // Add glow effect layer
           map.current.addLayer({
             id: 'navigation-route-glow',
@@ -488,7 +488,7 @@ export function RacingMap({
               'line-blur': 3
             }
           });
-          
+
           // Add main route layer
           map.current.addLayer({
             id: 'navigation-route-main',
@@ -501,14 +501,14 @@ export function RacingMap({
             }
           });
         }
-        
+
         // Fit map to route bounds
         const bounds = new (await import('mapbox-gl')).default.LngLatBounds();
         route.geometry.coordinates.forEach((coord: [number, number]) => {
           bounds.extend(coord);
         });
         map.current.fitBounds(bounds, { padding: 100 });
-        
+
         // Notify parent component that navigation has started
         if (onNavigationStart) {
           onNavigationStart(start, end);
@@ -518,10 +518,10 @@ export function RacingMap({
       console.error('Error calculating route:', error);
     }
   };
-  
+
   const clearNavigationRoute = () => {
     if (!map.current) return;
-    
+
     // Remove route layers
     if (map.current.getLayer('navigation-route-main')) {
       map.current.removeLayer('navigation-route-main');
@@ -532,7 +532,7 @@ export function RacingMap({
     if (map.current.getSource('navigation-route')) {
       map.current.removeSource('navigation-route');
     }
-    
+
     // Remove markers
     ['start', 'end'].forEach(type => {
       const markerId = `navigation-${type}`;
@@ -542,12 +542,12 @@ export function RacingMap({
         delete (map.current as any)[markerId];
       }
     });
-    
+
     setRouteStart(null);
     setRouteEnd(null);
     setNavigationRoute(null);
   };
-  
+
   return (
     <div className={`relative ${className}`}>
       {/* Map container */}
@@ -556,7 +556,7 @@ export function RacingMap({
         className="w-full h-full" 
         style={{ minHeight: '400px' }}
       />
-      
+
       {/* Racing-style UI overlay */}
       {isMapLoaded && (
         <>
@@ -592,7 +592,7 @@ export function RacingMap({
                 <Navigation className="h-5 w-5" />
               </Button>
             </div>
-            
+
             {/* Toggle controls */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button
@@ -614,7 +614,7 @@ export function RacingMap({
                 {showDensity ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </Button>
             </div>
-            
+
             {/* Quick actions */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button
@@ -650,7 +650,7 @@ export function RacingMap({
                 <MapPin className="h-5 w-5" />
               </Button>
             </div>
-            
+
             {/* Overlay controls */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button
@@ -716,7 +716,7 @@ export function RacingMap({
               </Button>
             </div>
           </div>
-          
+
           {/* Route drawing instructions - minimal banner */}
           {isDrawingRoute && (
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
@@ -746,7 +746,7 @@ export function RacingMap({
               </div>
             </div>
           )}
-          
+
           {/* Navigation mode instructions */}
           {navigationMode && !routeEnd && (
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
@@ -768,7 +768,7 @@ export function RacingMap({
               </div>
             </div>
           )}
-          
+
           {/* Minimal traffic legend - bottom left corner */}
           {showTraffic && (
             <div className="absolute bottom-24 left-6 z-10">
@@ -790,7 +790,7 @@ export function RacingMap({
               </div>
             </div>
           )}
-          
+
           {/* Saved routes - minimal indicator */}
           {savedRoutes.length > 0 && (
             <div className="absolute top-2 right-6 z-10">
@@ -802,14 +802,19 @@ export function RacingMap({
           )}
         </>
       )}
-      
+
+      {/* Floating Action Buttons - Right side */}
+      <div className="absolute right-4 top-16 flex flex-col gap-4 z-40 max-h-[80vh] overflow-y-auto pt-4 pb-8 pr-2">
+        
+      </div>
+
       {/* Route Overlays */}
       <RouteOverlays 
         map={map.current}
         overlays={sampleOverlays}
         showOverlays={showOverlays}
       />
-      
+
       {/* AI Routes Panel */}
       {showAIRoutes && (
         <AIRoutes 
@@ -819,27 +824,27 @@ export function RacingMap({
           }}
         />
       )}
-      
+
       {/* Route Creator */}
       <RouteCreator 
         map={map.current}
         isActive={showRouteCreator}
         onClose={() => setShowRouteCreator(false)}
       />
-      
+
       {/* Simulation Mode */}
       <SimulationMode 
         map={map.current}
         isActive={showSimulation}
         onToggle={() => setShowSimulation(!showSimulation)}
       />
-      
+
       {/* Route Heatmap */}
       <RouteHeatmap 
         map={map.current}
         isActive={showHeatmap}
       />
-      
+
       {/* Route Leaderboard */}
       {showLeaderboard && (
         <RouteLeaderboard 
