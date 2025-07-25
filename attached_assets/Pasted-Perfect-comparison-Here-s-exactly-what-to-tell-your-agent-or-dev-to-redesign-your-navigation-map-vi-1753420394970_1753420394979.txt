@@ -1,0 +1,57 @@
+Perfect comparison! Here’s exactly what to tell your agent or dev to redesign your navigation map view so it looks and feels like Waze:
+
+⸻
+
+Prompt to Redesign Navigation View Like Waze
+
+⸻
+
+Goal:
+Redesign the navigation view so it visually matches the focused, driving-friendly layout of Waze, with a 3D-tilted map, floating route line, live-turn directions, and minimal but bold overlay controls.
+
+⸻
+
+Features & Design Checklist:
+	•	Full-screen 3D or 2.5D tilted map as the background (no dark panel taking up the top half)
+	•	Route Line: Always center the route and current location; the map should pan/tilt to show where you’re headed (with a 3D tilt/heading view)
+	•	Directions Overlay:
+	•	Show next turn in a floating bubble at the top (not a huge black panel)
+	•	Display distance and road name for the next maneuver, e.g., “Turn left in 0.4 miles on Elm St”
+	•	Show ETA, total distance, and time at a glance, but keep them compact
+	•	Current Speed and Speed Limit:
+	•	Small floating widget at the lower left or right
+	•	Map Controls:
+	•	Compact icons for reporting police, hazards, or traffic, but don’t stack all controls in one vertical line—spread them along the sides or bottom with spacing
+	•	Minimap/User Dot:
+	•	Keep the user dot large and centered, always visible, with an arrow showing heading
+	•	Next Steps:
+	•	Floating list of steps, collapsible—by default, only the next maneuver is shown
+	•	Bottom Panel:
+	•	Only shows when stationary, or as a floating card, not a full-width, fixed black box
+
+⸻
+
+Visual Style:
+	•	Use translucent overlays, not opaque black bars
+	•	Make everything touch-friendly, big tap targets, and high contrast
+	•	All overlays (widgets, turn-by-turn, controls) should “float” above the map background with subtle drop shadows or blur
+	•	Use color accents for route line, police alerts, etc.
+
+⸻
+
+Behavior:
+	•	The map must always pan to follow the user’s current location and heading—the driver’s “dot” stays centered, the route and map rotate as you turn
+	•	When searching, the map animates to show the route; when navigating, it locks to the driver’s heading
+	•	All overlays should be hidden or minimized when not needed (swipe or tap to expand directions, etc.)
+
+⸻
+
+Sample Task for Your Agent/Dev:
+
+“Redesign the navigation view to match Waze’s driving screen. Remove the large top/bottom black panels. Make the map full-screen and center the user. Add a floating directions bubble for the next maneuver, a compact speed widget, and spread controls along the edges. Always follow the user dot and heading. Style overlays to be translucent and touch-friendly. Reference the attached Waze screenshot for layout.”
+
+⸻
+
+You can copy-paste that as a task for your dev, your Replit agent, or ChatGPT for UI code!
+
+If you want it in React/Swift/MapboxGL code format, let me know your tech stack and I’ll tailor the prompt for a code-first answer!

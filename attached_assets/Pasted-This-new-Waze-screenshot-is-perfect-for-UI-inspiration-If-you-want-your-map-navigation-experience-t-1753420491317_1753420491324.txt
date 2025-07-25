@@ -1,0 +1,57 @@
+This new Waze screenshot is perfect for UI inspiration! If you want your map/navigation experience to look just like this, here’s an updated prompt you can give to your agent, dev, or ChatGPT:
+
+⸻
+
+Prompt: Redesign Navigation UI to Match Waze Style
+
+⸻
+
+Goal:
+Redesign our navigation/map view so it looks and works like the attached Waze screenshot. We want a visually clean, driver-focused, 3D map experience with floating UI overlays and colorful route lines.
+
+⸻
+
+Design Requirements (refer to screenshot):
+	1.	Full-Screen Map:
+	•	The map covers the entire screen, with minimal padding.
+	2.	3D Route & Centered User Arrow:
+	•	Route line is bold and always centered, with turns and next streets clearly labeled (see “Steenland”/“Chestnut St.”).
+	•	User location shown as a large arrow, centered in the lower half.
+	3.	Floating Turn Instructions:
+	•	Show the next turn as a compact floating panel at the top:
+	•	Turn icon, distance (e.g., “0.5 Miles”), and street name in bold.
+	•	No large black overlays or fixed panels.
+	4.	Time/Distance Bar:
+	•	At the bottom, show ETA, remaining minutes, and distance in a slim floating bar.
+	5.	Alerts & Map Markers:
+	•	Display crowd-sourced alerts (police, accidents, hazards) as small, colorful icons directly on the map, positioned above the route line.
+	6.	Quick-Access Buttons:
+	•	Add a floating expandable menu for reporting:
+	•	Police, Accident, Gas, Chat, Place, Camera (as shown in right-most screenshot).
+	•	The menu can pop up from a single main button in the corner—do not stack all buttons vertically!
+	7.	Style:
+	•	Bright, clear, and touch-friendly.
+	•	Use semi-transparent overlays and drop shadows for UI elements.
+	•	Prioritize bold colors for routes and alerts, with high contrast for all overlays.
+	8.	Map Behavior:
+	•	The map must always auto-center on the user and rotate to follow the driving direction (“compass mode”).
+	•	The view should pan/tilt to always keep the next turn visible.
+	•	When reporting or searching, expand the quick-access menu, but always keep most of the map visible.
+
+⸻
+
+Task for Agent/Dev:
+
+**“Redesign our navigation/map screen to match the Waze layout and experience in the attached image.
+	•	Make the map full-screen with a bold route line.
+	•	Center the user’s arrow and float a minimal turn direction panel at the top.
+	•	Put alerts and markers directly on the map, just above the route.
+	•	Add a floating expandable quick-access report button.
+	•	Always keep the map auto-centered on the user and rotate the map with their heading.
+	•	Use color and touch-friendly UI.
+	•	Reference the screenshot for layout, spacing, and design style.”**
+
+⸻
+
+You can literally copy-paste that.
+If you want React, SwiftUI, or MapboxGL JS code samples to get started, let me know your stack and I’ll write a starting scaffold!

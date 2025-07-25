@@ -29,6 +29,8 @@ import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
 import { TurnByTurnNavigation } from '@/components/navigation/turn-by-turn';
 import { RoutePlanner } from '@/components/navigation/route-planner';
 import { NavigationControls } from '@/components/navigation/navigation-controls';
+import { WazeStyleNavigation } from '@/components/navigation/waze-style-navigation';
+import { RouteAlerts, sampleAlerts } from '@/components/navigation/route-alerts';
 import { useNavigation } from '@/hooks/use-navigation';
 
 interface RacingMapProps {
@@ -71,6 +73,8 @@ export function RacingMap({
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showRoutePlanner, setShowRoutePlanner] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [currentSpeed, setCurrentSpeed] = useState<number>(0);
+  const [speedLimit, setSpeedLimit] = useState<number | undefined>(undefined);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -91,16 +95,18 @@ export function RacingMap({
   } = useNavigation({
     mapboxToken: MAPBOX_TOKEN,
     map: map.current,
-    onLocationUpdate: (location, heading) => {
+    onLocationUpdate: (location, speed, heading) => {
       setUserLocation(location);
+      setCurrentSpeed(speed || 0);
+      
       if (isNavigating && map.current) {
-        // Auto-follow user during navigation
+        // Auto-follow user during navigation with 3D tilt like Waze
         map.current.flyTo({
           center: location,
           bearing: heading || 0,
-          zoom: 16,
-          pitch: 60,
-          speed: 1.2,
+          zoom: 17, // Closer zoom for driving
+          pitch: 60, // 3D tilt for driving perspective
+          speed: 1.5,
           essential: true
         });
       }
@@ -127,8 +133,11 @@ export function RacingMap({
           style: mapStyles[mapStyle],
           center: center,
           zoom: zoom,
-          pitch: 0,
-          bearing: 0
+          pitch: isNavigating ? 60 : 0, // 3D perspective during navigation
+          bearing: 0,
+          // Navigation-friendly settings
+          doubleClickZoom: false,
+          dragRotate: true
         });
         
         map.current.on('load', () => {
@@ -647,19 +656,23 @@ export function RacingMap({
         style={{ minHeight: '100vh' }}
       />
       
-      {/* Turn-by-Turn Navigation Panel */}
-      <TurnByTurnNavigation
+      {/* Waze-Style Navigation UI */}
+      <WazeStyleNavigation
         isActive={isNavigating}
-        onClose={() => stopNavigation()}
         currentStep={currentStep}
-        remainingSteps={remainingSteps}
-        destination="Selected Destination"
         eta={eta}
         remainingDistance={remainingDistance}
         remainingTime={remainingTime}
-        voiceEnabled={voiceEnabled}
-        onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
-        onRecenter={recenterMap}
+        currentSpeed={currentSpeed}
+        speedLimit={speedLimit}
+        onStopNavigation={() => stopNavigation()}
+      />
+      
+      {/* Route Alerts */}
+      <RouteAlerts
+        alerts={sampleAlerts}
+        map={map.current}
+        isVisible={isNavigating}
       />
 
       {/* Route Planner Modal */}
@@ -673,21 +686,23 @@ export function RacingMap({
           }
         }}
         onPlaceSearch={searchPlaces}
-        currentLocation={userLocation}
+        currentLocation={userLocation || undefined}
       />
 
-      {/* Navigation Controls */}
-      <NavigationControls
-        isNavigating={isNavigating}
-        voiceEnabled={voiceEnabled}
-        onStartPlanning={() => setShowRoutePlanner(true)}
-        onStopNavigation={() => stopNavigation()}
-        onRecenter={recenterMap}
-        onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
-      />
+      {/* Navigation Controls - Only show when not navigating */}
+      {!isNavigating && (
+        <NavigationControls
+          isNavigating={isNavigating}
+          voiceEnabled={voiceEnabled}
+          onStartPlanning={() => setShowRoutePlanner(true)}
+          onStopNavigation={() => stopNavigation()}
+          onRecenter={recenterMap}
+          onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
+        />
+      )}
       
-      {/* Racing-style UI overlay */}
-      {isMapLoaded && (
+      {/* Racing-style UI overlay - Hide during navigation for clean Waze-style view */}
+      {isMapLoaded && !isNavigating && (
         <>
           {/* Map controls - vertical stack with proper spacing and overflow handling */}
           <div className="absolute left-4 top-1/4 flex flex-col gap-4 z-10 max-h-[70vh] overflow-y-auto pl-2 pb-4">
