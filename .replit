@@ -46,10 +46,6 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "fuser -k 5000/tcp || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "pkill -f \"tsx.*server\" || true"
 
 [[workflows.workflow.tasks]]
