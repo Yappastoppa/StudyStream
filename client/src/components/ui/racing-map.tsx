@@ -717,31 +717,75 @@ export function RacingMap({
             </div>
           </div>
           
-          {/* Route drawing instructions - minimal banner */}
+          {/* Route drawing dialog - centered popup */}
           {isDrawingRoute && (
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="bg-black/80 backdrop-blur-sm rounded-full px-6 py-2 flex items-center space-x-3">
-                <span className="text-xs text-racing-green">Click map to add points</span>
-                <div className="flex space-x-1">
-                  <Button
-                    size="icon"
-                    onClick={finishRoute}
-                    disabled={currentRoute.length < 2}
-                    className="h-6 w-16 text-xs bg-racing-green/20 hover:bg-racing-green/30 text-racing-green"
-                  >
-                    SAVE
-                  </Button>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-racing-dark/95 backdrop-blur-md rounded-xl border border-racing-steel/30 p-6 shadow-2xl max-w-md w-full mx-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Route className="h-5 w-5 text-racing-green" />
+                    Create Route
+                  </h3>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => {
                       setIsDrawingRoute(false);
                       setCurrentRoute([]);
+                      // Clear current route display
+                      map.current?.getSource('current-route').setData({
+                        type: 'FeatureCollection',
+                        features: []
+                      });
                     }}
-                    className="h-6 w-6 text-white/70 hover:text-white"
+                    className="h-8 w-8 text-white/70 hover:text-white hover:bg-racing-steel/20"
                   >
                     ×
                   </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 text-racing-green">
+                    <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
+                    <span className="text-sm">Click on the map to add route points</span>
+                  </div>
+                  
+                  <div className="bg-racing-steel/20 rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-white/70">Points added:</span>
+                      <span className="text-racing-blue font-medium">{currentRoute.length}</span>
+                    </div>
+                    {currentRoute.length >= 2 && (
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-white/70">Ready to save</span>
+                        <span className="text-racing-green">✓</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex space-x-3">
+                    <Button
+                      onClick={finishRoute}
+                      disabled={currentRoute.length < 2}
+                      className="flex-1 bg-racing-green/20 hover:bg-racing-green/30 text-racing-green border border-racing-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save Route
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentRoute([]);
+                        // Clear current route display
+                        map.current?.getSource('current-route').setData({
+                          type: 'FeatureCollection',
+                          features: []
+                        });
+                      }}
+                      className="bg-racing-steel/20 border-racing-steel/30 text-white/70 hover:text-white hover:bg-racing-steel/30"
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
