@@ -1,0 +1,85 @@
+Absolutely—here’s a full, copy-paste prompt for your agent. This will guide it to add user-facing toast notifications for location tracking errors and place search failures throughout your navigation codebase. It assumes you have react-hot-toast installed and <Toaster /> mounted in your main app component.
+
+⸻
+
+Full Agent Patch Prompt for Error Toasts
+
+⸻
+
+Patch summary:
+Add user-facing toast notifications for both location tracking errors and place search errors using react-hot-toast. These toasts should show a clear error message to the user when GPS/location fails or place search fails.
+
+⸻
+
+Implementation details:
+	1.	Ensure import of react-hot-toast:
+At the top of any file where you show toasts (usually use-navigation.ts or related hooks/components):
+
+import toast from 'react-hot-toast';
+
+
+	2.	Patch location tracking error handling:
+In the function where you call navigator.geolocation.watchPosition, update the error callback like this:
+
+watchPositionId.current = navigator.geolocation.watchPosition(
+  // success callback,
+  (error) => {
+    console.error('Location tracking error:', error);
+    toast.error(
+      error.message === "User denied Geolocation"
+        ? "Location permission denied. Enable GPS for navigation."
+        : "Could not get your location. Please try again."
+    );
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 5000,
+    maximumAge: 1000
+  }
+);
+
+
+	3.	Patch place search error handling:
+In your place search function (for example, searchPlaces in use-navigation.ts or similar), update the error handling in the catch block like this:
+
+catch (error) {
+  console.error('Place search failed:', error);
+  toast.error("Couldn't find that place. Check your connection or try a different search.");
+  return [];
+}
+
+
+	4.	(If not done already) Mount the toaster once in your app root:
+In your main app component (e.g., App.tsx or main.tsx):
+
+import { Toaster } from 'react-hot-toast';
+
+function App() {
+  return (
+    <>
+      <YourRoutesOrAppContent />
+      <Toaster position="top-right" />
+    </>
+  );
+}
+
+
+	5.	Do not change any UI/UX styling or workflow—just show toasts on errors.
+The toasts should dismiss automatically (default behavior) unless otherwise specified.
+
+⸻
+
+In summary, add the above toast logic to your navigation/location/place search error handling code paths. Make sure all user-facing navigation/location errors display an actionable toast to the user instead of failing silently.
+
+⸻
+
+EXTRA:
+If the agent finds any other user-facing navigation/network/geolocation/voice synthesis errors not covered above, apply the same toast notification pattern there as well.
+
+⸻
+
+End of patch.
+
+⸻
+
+Let me know when you run this and if you want an additional patch for other error types!
