@@ -38,6 +38,7 @@ import { AlternativeRoutes } from '@/components/navigation/alternative-routes';
 import { VoiceNavigation } from '@/components/navigation/voice-navigation';
 import { LaneGuidanceDisplay, extractLaneGuidance } from '@/components/navigation/lane-guidance';
 import { OfflineRoutes } from '@/components/navigation/offline-routes';
+import { LocationTracker } from '@/components/navigation/location-tracker';
 import { useNavigation } from '@/hooks/use-navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
 import toast from 'react-hot-toast';
@@ -103,6 +104,9 @@ export function RacingMap({
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
+  // Car marker reference
+  const userMarkerRef = useRef<any>(null);
+
   // Enhanced navigation hook with enterprise features
   const {
     isNavigating,
@@ -135,17 +139,20 @@ export function RacingMap({
       setCurrentSpeed(speed || 0);
       setIsGPSLost(false); // GPS signal recovered
       
+      // Update car marker position and rotation
+      updateCarMarker(location, heading || 0);
+      
       // Auto-center map if navigation is active and auto-center is enabled
       if (isNavigating && isAutoCenter && map.current) {
         const zoom = isDriverView ? 17 : 14;
         const pitch = isDriverView ? 60 : 0;
         
-        map.current.flyTo({
+        map.current.easeTo({
           center: location,
           bearing: heading || 0,
           zoom: zoom,
           pitch: pitch,
-          speed: 0.8,
+          duration: 600,
           essential: true
         });
       }
@@ -304,6 +311,63 @@ export function RacingMap({
     }
   };
 
+  // Update car marker position and rotation
+  const updateCarMarker = async (location: [number, number], heading: number) => {
+    if (!map.current) return;
+
+    try {
+      if (!userMarkerRef.current) {
+        // Create car marker element
+        const markerElement = document.createElement('div');
+        markerElement.className = 'car-marker';
+        markerElement.style.width = '36px';
+        markerElement.style.height = '36px';
+        markerElement.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g filter="url(#filter0_d_1_1)">
+              <path d="M18 4L22 10H30L28 26H24L22 30H14L12 26H8L6 10H14L18 4Z" fill="#00D4FF" stroke="#0099CC" stroke-width="1"/>
+              <circle cx="12" cy="22" r="2" fill="#333"/>
+              <circle cx="24" cy="22" r="2" fill="#333"/>
+              <rect x="16" y="12" width="4" height="6" rx="1" fill="#004466"/>
+            </g>
+            <defs>
+              <filter id="filter0_d_1_1" x="0" y="0" width="36" height="36" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                <feOffset dy="2"/>
+                <feGaussianBlur stdDeviation="3"/>
+                <feComposite in2="hardAlpha" operator="out"/>
+                <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0.831373 0 0 0 0 1 0 0 0 0.3 0"/>
+                <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+              </filter>
+            </defs>
+          </svg>
+        `)}")`;
+        markerElement.style.backgroundSize = 'contain';
+        markerElement.style.backgroundRepeat = 'no-repeat';
+        markerElement.style.backgroundPosition = 'center';
+
+        const mapboxgl = await import('mapbox-gl');
+        userMarkerRef.current = new mapboxgl.default.Marker({
+          element: markerElement,
+          anchor: 'center'
+        }).setLngLat(location).addTo(map.current);
+      } else {
+        // Update existing marker position
+        userMarkerRef.current.setLngLat(location);
+      }
+
+      // Update marker rotation based on heading
+      if (userMarkerRef.current && heading > 0) {
+        const markerElement = userMarkerRef.current.getElement();
+        markerElement.style.transform = `rotate(${heading}deg)`;
+      }
+    } catch (error) {
+      console.error('Failed to update car marker:', error);
+    }
+  };
+
   // GPS loss detection
   useEffect(() => {
     if (!isNavigating) return;
@@ -395,9 +459,6 @@ export function RacingMap({
     
     return () => {
       clearTimeout(timeoutId);
-    };
-    
-    return () => {
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -953,6 +1014,141 @@ export function RacingMap({
             <Search className="h-5 w-5 text-racing-blue" />
             <span className="text-white">Where to?</span>
           </Button>
+        </div>
+      )}
+
+      {/* GPS Lost Banner - Show when navigation is active but GPS is lost */}
+      {isNavigating && isGPSLost && (
+        <div className="fixed top-16 left-0 right-0 z-50 pointer-events-none">
+          <div className="bg-red-600 text-white p-3 text-center animate-pulse">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Searching for GPS...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Center Button - Show when user manually pans during navigation */}
+      {isNavigating && showCenterButton && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto">
+          <Button
+            onClick={handleRecenter}
+            className="bg-black/90 hover:bg-black border border-white/20 backdrop-blur-md shadow-lg px-6 py-2 rounded-full"
+          >
+            <span className="text-white font-semibold">CENTER</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Driver/Overview Mode Toggle - Show during navigation */}
+      {isNavigating && (
+        <div className="fixed top-20 left-4 z-40 pointer-events-auto">
+          <div className="bg-black/90 backdrop-blur-md border border-white/20 rounded-lg p-2">
+            <div className="flex space-x-2">
+              <Button
+                onClick={toggleViewMode}
+                variant={isDriverView ? "default" : "outline"}
+                size="sm"
+                className={`${isDriverView ? 'bg-racing-blue text-white' : 'text-white border-white/20'} hover:bg-racing-blue/80`}
+              >
+                Driver
+              </Button>
+              <Button
+                onClick={toggleViewMode}
+                variant={!isDriverView ? "default" : "outline"}
+                size="sm"
+                className={`${!isDriverView ? 'bg-racing-blue text-white' : 'text-white border-white/20'} hover:bg-racing-blue/80`}
+              >
+                Overview
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Location Tracker with Live GPS */}
+      <LocationTracker
+        isActive={isNavigating}
+        onLocationUpdate={(location: [number, number], speed?: number, heading?: number) => {
+          setUserLocation(location);
+          setUserSpeed(speed || 0);
+          setUserHeading(heading || 0);
+          setCurrentSpeed(speed || 0);
+          
+          // Update car marker position and rotation
+          updateCarMarker(location, heading || 0);
+          
+          // Auto-center map if navigation is active and auto-center is enabled
+          if (isNavigating && isAutoCenter && map.current) {
+            const zoom = isDriverView ? 17 : 14;
+            const pitch = isDriverView ? 60 : 0;
+            
+            map.current.easeTo({
+              center: location,
+              bearing: heading || 0,
+              zoom: zoom,
+              pitch: pitch,
+              duration: 600,
+              essential: true
+            });
+          }
+          
+          // Check for off-route detection
+          if (isNavigating && currentRoute && lastUserLocationRef.current) {
+            checkOffRoute(location);
+          }
+          
+          lastUserLocationRef.current = location;
+        }}
+        onGPSStatusChange={(isLost: boolean) => {
+          setIsGPSLost(isLost);
+          if (isLost) {
+            toast.error("Searching for GPS signal...", { id: 'gps-lost' });
+          } else {
+            toast.dismiss('gps-lost');
+          }
+        }}
+        className={isNavigating ? "hidden" : ""} // Hide location tracker UI during navigation
+      />
+
+      {/* Advanced Speedometer with ETA and Next Instruction */}
+      {isNavigating && userLocation && (
+        <div className="fixed bottom-4 left-4 z-40 pointer-events-none">
+          <div className="bg-black/90 backdrop-blur-md border border-white/20 rounded-xl p-4 space-y-3">
+            {/* Speed Display */}
+            <div className="text-center">
+              <div className="text-3xl font-bold text-racing-blue">
+                {Math.round(userSpeed * 3.6)}
+              </div>
+              <div className="text-xs text-white/60">km/h</div>
+            </div>
+            
+            {/* ETA and Distance */}
+            <div className="flex justify-between text-sm">
+              <div className="text-center">
+                <div className="text-racing-green font-semibold">{eta}</div>
+                <div className="text-white/60 text-xs">ETA</div>
+              </div>
+              <div className="text-center">
+                <div className="text-white font-semibold">
+                  {remainingDistance > 1000 
+                    ? `${(remainingDistance / 1000).toFixed(1)}km` 
+                    : `${remainingDistance.toFixed(0)}m`}
+                </div>
+                <div className="text-white/60 text-xs">distance</div>
+              </div>
+            </div>
+            
+            {/* Next Instruction */}
+            {currentStep && (
+              <div className="border-t border-white/20 pt-2">
+                <div className="text-xs text-white/80 truncate max-w-32">
+                  {currentStep.instruction}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
