@@ -66,7 +66,6 @@ export function RacingMap({
   const [showSimulation, setShowSimulation] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showNavigationSearch, setShowNavigationSearch] = useState(false);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -609,6 +608,18 @@ export function RacingMap({
         style={{ minHeight: '100vh' }}
       />
       
+      {/* Top Center Search Bar */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-96 max-w-[calc(100vw-32px)]">
+        <NavigationSearch
+          map={map.current}
+          onLocationSelect={handleLocationSelect}
+          onNavigationStart={(start, end) => {
+            calculateNavigationRoute(start, end);
+          }}
+          className="top-search"
+        />
+      </div>
+      
       {/* Racing-style UI overlay */}
       {isMapLoaded && (
         <>
@@ -750,15 +761,7 @@ export function RacingMap({
               >
                 <Trophy className="h-5 w-5" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowNavigationSearch(!showNavigationSearch)}
-                className={`h-12 w-12 hover:bg-racing-blue/20 transition-all duration-200 ${showNavigationSearch ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
-                title="Search & Navigate"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
+              
             </div>
 
             {/* Mobile responsive - show fewer buttons on small screens */}
@@ -952,36 +955,7 @@ export function RacingMap({
         />
       )}
       
-      {/* Navigation Search Panel */}
-      {showNavigationSearch && (
-        <div className="absolute top-4 right-4 z-30 w-80 max-w-[calc(100vw-32px)]">
-          <div className="bg-racing-dark/95 backdrop-blur-md rounded-xl border border-racing-steel/30 p-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Search className="h-5 w-5 text-racing-blue" />
-                Search & Navigate
-              </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowNavigationSearch(false)}
-                className="h-8 w-8 text-white/70 hover:text-white hover:bg-racing-steel/20"
-              >
-                ×
-              </Button>
-            </div>
-            
-            <NavigationSearch
-              map={map.current}
-              onLocationSelect={handleLocationSelect}
-              onNavigationStart={(start, end) => {
-                calculateNavigationRoute(start, end);
-                setShowNavigationSearch(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 }
