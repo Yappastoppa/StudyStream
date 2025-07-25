@@ -300,63 +300,51 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
         }}
       />
 
-      {/* Top HUD Bar */}
+      {/* Minimal Top Header */}
       <div className="absolute top-0 left-0 right-0 z-30">
-        <div className="bg-racing-dark/80 backdrop-blur-sm border-b border-racing-steel/30 px-4 py-3">
+        <div className="bg-black/60 backdrop-blur-sm px-4 py-2">
           <div className="flex items-center justify-between">
-            {/* App title and status */}
+            {/* App title and status - minimal */}
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-racing-blue to-racing-red rounded-lg flex items-center justify-center">
-                <Flag className="w-4 h-4 text-white" />
+              <h1 className="text-sm font-bold tracking-wider text-white/90">GHOSTRACER</h1>
+              <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full ${
+                isConnected ? 'bg-racing-green/20' : 'bg-racing-red/20'
+              }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  isConnected ? 'bg-racing-green' : 'bg-racing-red'
+                }`} />
+                <span className={`text-[10px] font-medium ${
+                  isConnected ? 'text-racing-green' : 'text-racing-red'
+                }`}>
+                  {isConnected ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </div>
-              <div>
-                <h1 className="text-lg font-bold tracking-wide text-white">GhostRacer</h1>
-                <div className="flex items-center space-x-2 text-xs">
-                  <div className="flex items-center space-x-1">
-                    <div className={`w-2 h-2 rounded-full animate-pulse ${
-                      isConnected ? 'bg-racing-green' : 'bg-racing-red'
-                    }`} />
-                    <span className={isConnected ? 'text-racing-green' : 'text-racing-red'}>
-                      {isConnected ? 'LIVE' : 'OFFLINE'}
-                    </span>
-                  </div>
-                  <span className="text-racing-gray">•</span>
-                  <span className="text-racing-gray">{nearbyUsersCount} nearby</span>
-                </div>
-              </div>
+              {nearbyUsersCount > 0 && (
+                <span className="text-[10px] text-white/50">
+                  {nearbyUsersCount} NEARBY
+                </span>
+              )}
             </div>
             
-            {/* Connection status and menu */}
-            <div className="flex items-center space-x-3">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="p-2 hover:bg-racing-steel/50 rounded-lg"
-              >
-                <Satellite className={`w-4 h-4 ${
-                  locationError ? 'text-racing-red' : 'text-racing-blue'
-                }`} />
-              </Button>
-              <Button
-                onClick={() => setIsMenuOpen(true)}
-                size="sm"
-                variant="ghost"
-                className="p-2 hover:bg-racing-steel/50 rounded-lg"
-              >
-                <Menu className="w-4 h-4 text-white" />
-              </Button>
-            </div>
+            {/* Menu button only */}
+            <Button
+              onClick={() => setIsMenuOpen(true)}
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 hover:bg-white/10 rounded-lg"
+            >
+              <Menu className="w-4 h-4 text-white/70" />
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Speed HUD (Bottom Left) */}
-      <div className="absolute bottom-24 left-4 z-20">
-        <SpeedHud
-          currentSpeed={speed ? Math.round(speed * 0.621371) : 0} // Convert km/h to mph
-          distanceTraveled={distanceTraveled * 0.621371} // Convert km to miles
-        />
-      </div>
+      {/* Speed HUD (Bottom Left with proper spacing) */}
+      <SpeedHud
+        currentSpeed={speed || 0}
+        distanceTraveled={distanceTraveled}
+        className="absolute bottom-6 left-6 z-20"
+      />
 
       {/* Action Buttons (Right Side) */}
       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">

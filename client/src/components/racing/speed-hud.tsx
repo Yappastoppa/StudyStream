@@ -10,36 +10,35 @@ export function SpeedHud({ currentSpeed, distanceTraveled, className = "" }: Spe
   // Convert km/h to mph (if currentSpeed is in km/h)
   const speedInMph = currentSpeed * 0.621371;
   const speedColor = speedInMph > 80 ? 'text-racing-red' : speedInMph > 50 ? 'text-racing-yellow' : 'text-racing-blue';
+  const glowColor = speedInMph > 80 ? 'shadow-racing-red/50' : speedInMph > 50 ? 'shadow-racing-yellow/50' : 'shadow-racing-blue/50';
   
   return (
-    <Card className={`bg-racing-dark/90 backdrop-blur-md border-racing-steel/30 ${className} transition-all duration-200`}>
-      <CardContent className="p-4 min-w-[140px]">
+    <div className={`relative ${className}`}>
+      {/* Glow effect */}
+      <div className={`absolute inset-0 rounded-2xl blur-2xl ${speedColor.replace('text-', 'bg-')} opacity-20`} />
+      
+      {/* Main container */}
+      <div className={`relative bg-black/80 backdrop-blur-sm rounded-2xl p-4 min-w-[120px] shadow-2xl ${glowColor}`}>
         <div className="text-center">
-          <div className={`text-3xl font-bold tracking-wider transition-colors duration-300 ${speedColor}`}>
-            {speedInMph.toFixed(1)}
-          </div>
-          <div className="text-xs text-racing-gray uppercase tracking-widest">
-            MPH
-          </div>
-          
-          {/* Speed indicator bar */}
-          <div className="w-full bg-racing-steel/30 rounded-full h-1 mt-2">
-            <div 
-              className={`h-1 rounded-full transition-all duration-300 ${speedColor.replace('text-', 'bg-')}`}
-              style={{ width: `${Math.min((speedInMph / 120) * 100, 100)}%` }}
-            />
-          </div>
-          
-          <div className="border-t border-racing-steel/30 mt-3 pt-2">
-            <div className="text-sm font-medium text-white">
-              {distanceTraveled.toFixed(1)}
+          {/* Speed display with glow */}
+          <div className="relative">
+            <div className={`text-4xl font-bold tracking-tight ${speedColor} drop-shadow-[0_0_20px_currentColor]`}>
+              {Math.round(speedInMph)}
             </div>
-            <div className="text-xs text-racing-gray">
-              MILES
+            <div className="text-[10px] text-white/60 uppercase tracking-wider mt-1">
+              MPH
+            </div>
+          </div>
+          
+          {/* Compact distance display */}
+          <div className="mt-3 pt-2 border-t border-white/10">
+            <div className="flex items-baseline justify-center space-x-1">
+              <span className="text-lg font-medium text-white/90">{distanceTraveled.toFixed(1)}</span>
+              <span className="text-[10px] text-white/50 uppercase">mi</span>
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

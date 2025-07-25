@@ -37,7 +37,7 @@ export function RacingMap({
   
   // Map state
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [mapStyle, setMapStyle] = useState<'navigation' | 'satellite' | 'dark'>('navigation');
+  const [mapStyle, setMapStyle] = useState<'navigation' | 'satellite' | 'dark'>('dark');
   const [showTraffic, setShowTraffic] = useState(false);
   const [showDensity, setShowDensity] = useState(false);
   const [showHighwaysOnly, setShowHighwaysOnly] = useState(false);
@@ -79,7 +79,7 @@ export function RacingMap({
         // Route drawing functionality
         map.current.on('click', (e: any) => {
           if (isDrawingRoute) {
-            const coords = [e.lngLat.lng, e.lngLat.lat];
+            const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
             setCurrentRoute(prev => [...prev, coords]);
             addRoutePoint(coords);
           }
@@ -122,19 +122,20 @@ export function RacingMap({
           'interpolate',
           ['linear'],
           ['zoom'],
-          10, 2,
-          18, 6
+          10, 1.5,
+          18, 4
         ],
         'line-color': [
           'match', 
           ['get', 'congestion'],
-          'low', '#00ff41',        // Racing green
-          'moderate', '#ffff00',   // Warning yellow
-          'heavy', '#ff8c00',      // Racing orange
-          'severe', '#ff0000',     // Danger red
-          '#666666'                // Default gray
+          'low', '#00ff88',        // Neon green
+          'moderate', '#ffcc00',   // Bright yellow
+          'heavy', '#ff6600',      // Bright orange
+          'severe', '#ff0033',     // Bright red
+          '#333333'                // Dark gray
         ],
-        'line-opacity': 0.8
+        'line-opacity': 0.7,
+        'line-blur': 1
       }
     });
     
@@ -385,165 +386,142 @@ export function RacingMap({
       {/* Racing-style UI overlay */}
       {isMapLoaded && (
         <>
-          {/* Top control bar */}
-          <div className="absolute top-4 left-4 right-4 z-10">
-            <div className="bg-racing-dark/90 backdrop-blur-sm border border-racing-steel/30 rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                {/* Map style selector */}
-                <div className="flex space-x-2">
-                  <Button
-                    variant={mapStyle === 'navigation' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => toggleMapStyle('navigation')}
-                    className="text-xs"
-                  >
-                    <Navigation className="w-3 h-3 mr-1" />
-                    NAV
-                  </Button>
-                  <Button
-                    variant={mapStyle === 'satellite' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => toggleMapStyle('satellite')}
-                    className="text-xs"
-                  >
-                    <Satellite className="w-3 h-3 mr-1" />
-                    SAT
-                  </Button>
-                  <Button
-                    variant={mapStyle === 'dark' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => toggleMapStyle('dark')}
-                    className="text-xs"
-                  >
-                    <Layers className="w-3 h-3 mr-1" />
-                    DARK
-                  </Button>
-                </div>
-                
-                {/* Overlay toggles */}
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <label className="text-xs text-racing-gray">TRAFFIC</label>
-                    <Switch
-                      checked={showTraffic}
-                      onCheckedChange={toggleTraffic}
-                      className="scale-75"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <label className="text-xs text-racing-gray">DENSITY</label>
-                    <Switch
-                      checked={showDensity}
-                      onCheckedChange={toggleDensity}
-                      className="scale-75"
-                    />
-                  </div>
-                </div>
-                
-                {/* Quick actions */}
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={zoomToOverview}
-                    className="text-xs"
-                  >
-                    <ZoomOut className="w-3 h-3 mr-1" />
-                    OVERVIEW
-                  </Button>
-                  <Button
-                    variant={isDrawingRoute ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setIsDrawingRoute(!isDrawingRoute)}
-                    className="text-xs"
-                  >
-                    <Route className="w-3 h-3 mr-1" />
-                    {isDrawingRoute ? 'DRAWING' : 'ROUTE'}
-                  </Button>
-                </div>
-              </div>
+          {/* Map controls - vertical stack on bottom right */}
+          <div className="absolute bottom-6 right-6 z-10 flex flex-col space-y-2">
+            {/* Map style buttons */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1 flex flex-col space-y-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleMapStyle('dark')}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${mapStyle === 'dark' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'}`}
+                title="Dark Mode"
+              >
+                <Layers className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleMapStyle('satellite')}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${mapStyle === 'satellite' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'}`}
+                title="Satellite View"
+              >
+                <Satellite className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleMapStyle('navigation')}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${mapStyle === 'navigation' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'}`}
+                title="Navigation View"
+              >
+                <Navigation className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Toggle controls */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1 flex flex-col space-y-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTraffic}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showTraffic ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'}`}
+                title="Toggle Traffic"
+              >
+                <Zap className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleDensity}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${showDensity ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'}`}
+                title="Toggle Density"
+              >
+                {showDensity ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+              </Button>
+            </div>
+            
+            {/* Quick actions */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1 flex flex-col space-y-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={zoomToOverview}
+                className="h-10 w-10 hover:bg-racing-blue/20 text-white/70"
+                title="Overview"
+              >
+                <ZoomOut className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsDrawingRoute(!isDrawingRoute)}
+                className={`h-10 w-10 hover:bg-racing-blue/20 ${isDrawingRoute ? 'bg-racing-green/30 text-racing-green' : 'text-white/70'}`}
+                title="Draw Route"
+              >
+                <Route className="h-5 w-5" />
+              </Button>
             </div>
           </div>
           
-          {/* Route drawing instructions */}
+          {/* Route drawing instructions - minimal banner */}
           {isDrawingRoute && (
-            <div className="absolute top-20 left-4 right-4 z-10">
-              <div className="bg-racing-blue/90 backdrop-blur-sm border border-racing-blue/50 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-white">
-                    Click on the map to add route points
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={finishRoute}
-                      disabled={currentRoute.length < 2}
-                      className="text-xs"
-                    >
-                      SAVE ROUTE
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsDrawingRoute(false);
-                        setCurrentRoute([]);
-                      }}
-                      className="text-xs"
-                    >
-                      CANCEL
-                    </Button>
-                  </div>
+            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="bg-black/80 backdrop-blur-sm rounded-full px-6 py-2 flex items-center space-x-3">
+                <span className="text-xs text-racing-green">Click map to add points</span>
+                <div className="flex space-x-1">
+                  <Button
+                    size="icon"
+                    onClick={finishRoute}
+                    disabled={currentRoute.length < 2}
+                    className="h-6 w-16 text-xs bg-racing-green/20 hover:bg-racing-green/30 text-racing-green"
+                  >
+                    SAVE
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setIsDrawingRoute(false);
+                      setCurrentRoute([]);
+                    }}
+                    className="h-6 w-6 text-white/70 hover:text-white"
+                  >
+                    ×
+                  </Button>
                 </div>
               </div>
             </div>
           )}
           
-          {/* Traffic legend */}
+          {/* Minimal traffic legend - bottom left corner */}
           {showTraffic && (
-            <div className="absolute bottom-4 left-4 z-10">
-              <div className="bg-racing-dark/90 backdrop-blur-sm border border-racing-steel/30 rounded-lg p-3">
-                <div className="text-xs text-racing-gray mb-2">TRAFFIC</div>
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-1 bg-racing-green"></div>
-                    <span className="text-xs text-white">Free Flow</span>
+            <div className="absolute bottom-24 left-6 z-10">
+              <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-[#00ff88]"></div>
+                    <span className="text-[10px] text-white/70">Clear</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-1 bg-yellow-400"></div>
-                    <span className="text-xs text-white">Moderate</span>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-[#ffcc00]"></div>
+                    <span className="text-[10px] text-white/70">Slow</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-1 bg-orange-400"></div>
-                    <span className="text-xs text-white">Heavy</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-1 bg-racing-red"></div>
-                    <span className="text-xs text-white">Severe</span>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-[#ff0033]"></div>
+                    <span className="text-[10px] text-white/70">Heavy</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
           
-          {/* Saved routes panel */}
+          {/* Saved routes - minimal indicator */}
           {savedRoutes.length > 0 && (
-            <div className="absolute bottom-4 right-4 z-10">
-              <div className="bg-racing-dark/90 backdrop-blur-sm border border-racing-steel/30 rounded-lg p-3">
-                <div className="text-xs text-racing-gray mb-2">SAVED ROUTES</div>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {savedRoutes.map((route, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-1 rounded"
-                        style={{ backgroundColor: route.color || '#ff6b35' }}
-                      ></div>
-                      <span className="text-xs text-white truncate">
-                        {route.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <div className="absolute top-2 right-6 z-10">
+              <div className="bg-black/70 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-2">
+                <Route className="h-3 w-3 text-racing-green" />
+                <span className="text-xs text-white/70">{savedRoutes.length} routes</span>
               </div>
             </div>
           )}
