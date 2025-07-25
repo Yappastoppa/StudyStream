@@ -561,7 +561,7 @@ export function RacingMap({
       {isMapLoaded && (
         <>
           {/* Map controls - vertical stack with proper spacing and overflow handling */}
-          <div className="absolute right-4 top-1/4 flex flex-col gap-4 z-10 max-h-[70vh] overflow-y-auto pr-2 pb-4">
+          <div className="absolute left-4 top-1/4 flex flex-col gap-4 z-10 max-h-[70vh] overflow-y-auto pl-2 pb-4">
             {/* Map style buttons */}
             <div className="bg-black/70 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-2 min-w-[52px]">
               <Button

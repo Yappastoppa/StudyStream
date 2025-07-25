@@ -293,7 +293,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
       <RacingMap
         center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}
         zoom={15}
-        className="absolute inset-0"
+        className="absolute inset-0 z-0"
         savedRoutes={savedRoutes}
         onRouteSelect={(route) => {
           setSavedRoutes(prev => [...prev, route]);
@@ -352,7 +352,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
       <SpeedHud
         currentSpeed={speed || 0}
         distanceTraveled={distanceTraveled}
-        className="absolute bottom-6 left-6 z-20"
+        className="absolute bottom-24 left-20 z-20"
       />
 
       {/* Action Buttons (Right Side) */}

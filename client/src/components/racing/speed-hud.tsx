@@ -15,27 +15,27 @@ export function SpeedHud({ currentSpeed, distanceTraveled, className = "" }: Spe
   return (
     <div className={`relative ${className}`}>
       {/* Glow effect */}
-      <div className={`absolute inset-0 rounded-2xl blur-2xl ${speedColor.replace('text-', 'bg-')} opacity-20`} />
+      <div className={`absolute inset-0 rounded-full blur-lg ${speedColor.replace('text-', 'bg-')} opacity-20`} />
       
-      {/* Main container */}
-      <div className={`relative bg-black/80 backdrop-blur-sm rounded-2xl p-4 min-w-[120px] shadow-2xl ${glowColor}`}>
+      {/* Compact gauge container */}
+      <div className={`relative bg-black/90 backdrop-blur-sm rounded-full p-3 w-16 h-16 shadow-lg ${glowColor} flex items-center justify-center`}>
         <div className="text-center">
-          {/* Speed display with glow */}
-          <div className="relative">
-            <div className={`text-4xl font-bold tracking-tight ${speedColor} drop-shadow-[0_0_20px_currentColor]`}>
-              {Math.round(speedInMph)}
-            </div>
-            <div className="text-[10px] text-white/60 uppercase tracking-wider mt-1">
-              MPH
-            </div>
+          {/* Compact speed display */}
+          <div className={`text-lg font-bold tracking-tight ${speedColor} drop-shadow-[0_0_10px_currentColor]`}>
+            {Math.round(speedInMph)}
           </div>
-          
-          {/* Compact distance display */}
-          <div className="mt-3 pt-2 border-t border-white/10">
-            <div className="flex items-baseline justify-center space-x-1">
-              <span className="text-lg font-medium text-white/90">{distanceTraveled.toFixed(1)}</span>
-              <span className="text-[10px] text-white/50 uppercase">mi</span>
-            </div>
+          <div className="text-[8px] text-white/60 uppercase tracking-wider -mt-1">
+            MPH
+          </div>
+        </div>
+      </div>
+      
+      {/* Distance as small overlay */}
+      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+        <div className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-0.5">
+          <div className="flex items-baseline justify-center space-x-0.5">
+            <span className="text-xs font-medium text-white/80">{distanceTraveled.toFixed(1)}</span>
+            <span className="text-[8px] text-white/50">mi</span>
           </div>
         </div>
       </div>
