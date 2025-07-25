@@ -26,7 +26,10 @@ import { RouteCreator } from '@/components/racing/route-creator';
 import { SimulationMode } from '@/components/racing/simulation-mode';
 import { RouteHeatmap } from '@/components/racing/route-heatmap';
 import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
-import { NavigationSearch } from '@/components/racing/navigation-search';
+import { TurnByTurnNavigation } from '@/components/navigation/turn-by-turn';
+import { RoutePlanner } from '@/components/navigation/route-planner';
+import { NavigationControls } from '@/components/navigation/navigation-controls';
+import { useNavigation } from '@/hooks/use-navigation';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -66,8 +69,43 @@ export function RacingMap({
   const [showSimulation, setShowSimulation] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showRoutePlanner, setShowRoutePlanner] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+  
+  // Navigation hook
+  const {
+    isNavigating,
+    currentStep,
+    remainingSteps,
+    remainingDistance,
+    remainingTime,
+    eta,
+    voiceEnabled,
+    setVoiceEnabled,
+    startNavigation,
+    stopNavigation,
+    searchPlaces,
+    recenterMap
+  } = useNavigation({
+    mapboxToken: MAPBOX_TOKEN,
+    map: map.current,
+    onLocationUpdate: (location, heading) => {
+      setUserLocation(location);
+      if (isNavigating && map.current) {
+        // Auto-follow user during navigation
+        map.current.flyTo({
+          center: location,
+          bearing: heading || 0,
+          zoom: 16,
+          pitch: 60,
+          speed: 1.2,
+          essential: true
+        });
+      }
+    }
+  });
   
   // Map style configurations
   const mapStyles = {
@@ -119,6 +157,7 @@ export function RacingMap({
             }
           }
         });
+
         
       } catch (error) {
         console.error('Failed to initialize racing map:', error);
@@ -608,17 +647,44 @@ export function RacingMap({
         style={{ minHeight: '100vh' }}
       />
       
-      {/* Top Center Search Bar */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-96 max-w-[calc(100vw-32px)]">
-        <NavigationSearch
-          map={map.current}
-          onLocationSelect={handleLocationSelect}
-          onNavigationStart={(start, end) => {
-            calculateNavigationRoute(start, end);
-          }}
-          className="top-search"
-        />
-      </div>
+      {/* Turn-by-Turn Navigation Panel */}
+      <TurnByTurnNavigation
+        isActive={isNavigating}
+        onClose={() => stopNavigation()}
+        currentStep={currentStep}
+        remainingSteps={remainingSteps}
+        destination="Selected Destination"
+        eta={eta}
+        remainingDistance={remainingDistance}
+        remainingTime={remainingTime}
+        voiceEnabled={voiceEnabled}
+        onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
+        onRecenter={recenterMap}
+      />
+
+      {/* Route Planner Modal */}
+      <RoutePlanner
+        isActive={showRoutePlanner}
+        onClose={() => setShowRoutePlanner(false)}
+        onRouteStart={async (start: [number, number], end: [number, number], options: any) => {
+          const success = await startNavigation(start, end, options);
+          if (success) {
+            setShowRoutePlanner(false);
+          }
+        }}
+        onPlaceSearch={searchPlaces}
+        currentLocation={userLocation}
+      />
+
+      {/* Navigation Controls */}
+      <NavigationControls
+        isNavigating={isNavigating}
+        voiceEnabled={voiceEnabled}
+        onStartPlanning={() => setShowRoutePlanner(true)}
+        onStopNavigation={() => stopNavigation()}
+        onRecenter={recenterMap}
+        onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
+      />
       
       {/* Racing-style UI overlay */}
       {isMapLoaded && (
