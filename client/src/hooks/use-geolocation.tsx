@@ -166,6 +166,7 @@ export function useGeolocation({
     let currentSpeed = 0;
     let targetSpeed = 0;
     let timeAccumulator = 0;
+    let stoppedTime = 0;
     
     // Initial position
     setTimeout(() => {
@@ -192,14 +193,32 @@ export function useGeolocation({
         const speedDiff = targetSpeed - currentSpeed;
         currentSpeed += speedDiff * 0.1; // 10% adjustment per update
         
-        // Add some realistic variation
-        const variation = (Math.random() - 0.5) * 2; // ±1 km/h variation
-        const displaySpeed = Math.max(0, currentSpeed + variation);
+        // Handle stopped state more realistically
+        let displaySpeed = currentSpeed;
+        
+        if (currentSpeed < 2) {
+          stoppedTime += 0.1;
+          // When nearly stopped, reduce to exactly 0 after brief moment
+          if (stoppedTime > 0.5) {
+            displaySpeed = 0;
+            currentSpeed = 0;
+          } else {
+            // Small random jitter when coming to stop
+            displaySpeed = Math.max(0, currentSpeed + (Math.random() - 0.5) * 0.5);
+          }
+        } else {
+          stoppedTime = 0;
+          // Normal driving variation only when moving
+          const variation = (Math.random() - 0.5) * 1.5;
+          displaySpeed = Math.max(0, currentSpeed + variation);
+        }
         
         setState(prev => ({
           ...prev,
           speed: displaySpeed,
-          heading: (prev.heading || 0) + (Math.random() - 0.5) * 5 // Slight heading drift
+          heading: displaySpeed > 1 ? 
+            (prev.heading || 0) + (Math.random() - 0.5) * (displaySpeed > 20 ? 3 : 1) :
+            prev.heading // Don't change heading when stopped
         }));
       }, 100); // Update every 100ms for smooth speedometer
       
