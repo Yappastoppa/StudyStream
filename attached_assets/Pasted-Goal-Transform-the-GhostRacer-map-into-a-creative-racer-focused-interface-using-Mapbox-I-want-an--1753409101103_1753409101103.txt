@@ -1,0 +1,31 @@
+Goal:
+Transform the GhostRacer map into a creative, racer-focused interface using Mapbox. I want an overall map view where users can zoom out and see their entire area, easily spot and save great driving routes, and identify places with low traffic and low residential density. The map must be visually striking, easy to navigate, and provide useful overlays for drivers and car enthusiasts.
+
+Specific requirements:
+	1.	Base Map Style:
+	•	Use a bold, high-contrast “Navigation” or “Dark” Mapbox style as the default.
+	•	Allow users to toggle between this and a Satellite or Hybrid view for realism.
+	2.	Traffic & Density Overlays:
+	•	Overlay real-time traffic (using Mapbox Traffic vector tiles).
+	•	Color-code roads by congestion: green (free), yellow (moderate), orange (heavy), red (severe).
+	•	Add a toggle to show/hide traffic.
+	•	Indicate low-residential or open driving areas using a choropleth (color-shaded) overlay or by de-emphasizing residential landuse polygons.
+	3.	Route Highlighting:
+	•	Let users mark, save, and name their favorite or optimal routes (as polyline overlays).
+	•	Make saved routes stand out with a glowing/bright line and visible start/end markers.
+	4.	Interactive Controls:
+	•	Add zoom, compass, and GPS location buttons.
+	•	Provide UI controls to toggle traffic, switch between map views, and filter visible road types (e.g., highways only vs all streets).
+	•	Add a button to quickly zoom out to an “overview” and back to the user’s location.
+	5.	Creative Touches:
+	•	Style the map to feel modern and “sporty”—think racing game UI, with accent colors and minimal distraction.
+	•	Ensure all overlays and controls work smoothly on desktop and mobile.
+
+References:
+	•	Use Mapbox’s official docs for guidance on style switching, vector tile overlays, expressions, and controls: https://docs.mapbox.com/
+	•	See Mapbox GL JS examples for traffic, population choropleth, toggling layers, and custom controls.
+
+What to deliver:
+	•	Implement or outline the core changes to the map component(s), and suggest a structure for the overlays and UI controls as described above.
+	•	Include sample Mapbox style/JS code for the main overlays and interactions if possible.
+	•	Make sure the solution is scalable for adding more overlays (like speed traps or scenic viewpoints) in the future.

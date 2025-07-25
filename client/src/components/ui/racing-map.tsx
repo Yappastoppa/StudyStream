@@ -1,235 +1,553 @@
 import { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Navigation, 
+  Satellite, 
+  Zap, 
+  Eye, 
+  EyeOff, 
+  Crosshair, 
+  ZoomIn, 
+  ZoomOut,
+  Route,
+  MapPin,
+  Layers
+} from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-
-// Set Mapbox access token
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 interface RacingMapProps {
   center?: [number, number];
   zoom?: number;
-  onMapClick?: (lng: number, lat: number) => void;
-  userLocations?: Array<{
-    id: number;
-    username: string;
-    lat: number;
-    lng: number;
-    isCurrentUser?: boolean;
-    isGhostMode?: boolean;
-  }>;
-  alerts?: Array<{
-    id: number;
-    type: string;
-    lat: number;
-    lng: number;
-    description?: string;
-  }>;
   className?: string;
+  onRouteSelect?: (route: any) => void;
+  savedRoutes?: any[];
 }
 
-export function RacingMap(props: RacingMapProps) {
-  const center = props?.center || [-74.006, 40.7128];
-  const zoom = props?.zoom || 13;
-  const onMapClick = props?.onMapClick;
-  const userLocations = props?.userLocations || [];
-  const alerts = props?.alerts || [];
-  const className = props?.className || "";
-
+export function RacingMap({ 
+  center = [-74.006, 40.7128], 
+  zoom = 13, 
+  className = "",
+  onRouteSelect,
+  savedRoutes = []
+}: RacingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const markers = useRef<mapboxgl.Marker[]>([]);
+  const map = useRef<any>(null);
+  
+  // Map state
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
-
-  // Initialize map
+  const [mapStyle, setMapStyle] = useState<'navigation' | 'satellite' | 'dark'>('navigation');
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [showDensity, setShowDensity] = useState(false);
+  const [showHighwaysOnly, setShowHighwaysOnly] = useState(false);
+  const [isDrawingRoute, setIsDrawingRoute] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState<any[]>([]);
+  
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+  
+  // Map style configurations
+  const mapStyles = {
+    navigation: 'mapbox://styles/mapbox/navigation-day-v1',
+    satellite: 'mapbox://styles/mapbox/satellite-streets-v12', 
+    dark: 'mapbox://styles/mapbox/dark-v11'
+  };
+  
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
-
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/dark-v11', // Dark racing theme
-        center: center,
-        zoom: zoom,
-        attributionControl: false
-      });
-
-      map.current.on('load', () => {
-        setIsMapLoaded(true);
-        setMapError(null);
-      });
-
-      map.current.on('error', (e) => {
-        console.error('Mapbox error:', e);
-        setMapError('Map failed to load. Check your Mapbox token.');
-      });
-
-      map.current.on('click', (e) => {
-        if (onMapClick) {
-          onMapClick(e.lngLat.lng, e.lngLat.lat);
+    if (map.current || !mapContainer.current) return;
+    
+    const initMap = async () => {
+      try {
+        const mapboxgl = await import('mapbox-gl');
+        mapboxgl.default.accessToken = MAPBOX_TOKEN;
+        
+        map.current = new mapboxgl.default.Map({
+          container: mapContainer.current!,
+          style: mapStyles[mapStyle],
+          center: center,
+          zoom: zoom,
+          pitch: 0,
+          bearing: 0
+        });
+        
+        map.current.on('load', () => {
+          setIsMapLoaded(true);
+          setupMapLayers();
+          setupMapControls();
+        });
+        
+        // Route drawing functionality
+        map.current.on('click', (e: any) => {
+          if (isDrawingRoute) {
+            const coords = [e.lngLat.lng, e.lngLat.lat];
+            setCurrentRoute(prev => [...prev, coords]);
+            addRoutePoint(coords);
+          }
+        });
+        
+      } catch (error) {
+        console.error('Failed to initialize racing map:', error);
+      }
+    };
+    
+    setTimeout(initMap, 100);
+    
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+  
+  const setupMapLayers = () => {
+    if (!map.current) return;
+    
+    // Add traffic layer
+    map.current.addSource('traffic', {
+      type: 'vector',
+      url: 'mapbox://mapbox.mapbox-traffic-v1'
+    });
+    
+    map.current.addLayer({
+      id: 'traffic-congestion',
+      type: 'line',
+      source: 'traffic',
+      'source-layer': 'traffic',
+      layout: {
+        'visibility': showTraffic ? 'visible' : 'none'
+      },
+      paint: {
+        'line-width': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          10, 2,
+          18, 6
+        ],
+        'line-color': [
+          'match', 
+          ['get', 'congestion'],
+          'low', '#00ff41',        // Racing green
+          'moderate', '#ffff00',   // Warning yellow
+          'heavy', '#ff8c00',      // Racing orange
+          'severe', '#ff0000',     // Danger red
+          '#666666'                // Default gray
+        ],
+        'line-opacity': 0.8
+      }
+    });
+    
+    // Add population density overlay (choropleth style)
+    map.current.addSource('population-density', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: generateDensityData() // Simulated density data
+      }
+    });
+    
+    map.current.addLayer({
+      id: 'population-density',
+      type: 'fill',
+      source: 'population-density',
+      layout: {
+        'visibility': showDensity ? 'visible' : 'none'
+      },
+      paint: {
+        'fill-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'density'],
+          0, 'rgba(0, 255, 0, 0.1)',      // Low density - green
+          50, 'rgba(255, 255, 0, 0.2)',   // Medium density - yellow
+          100, 'rgba(255, 0, 0, 0.3)'     // High density - red
+        ],
+        'fill-opacity': 0.6
+      }
+    });
+    
+    // Add route drawing source
+    map.current.addSource('current-route', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: []
+      }
+    });
+    
+    map.current.addLayer({
+      id: 'current-route',
+      type: 'line',
+      source: 'current-route',
+      paint: {
+        'line-color': '#00ff41',
+        'line-width': 6,
+        'line-opacity': 0.9
+      }
+    });
+    
+    // Add saved routes
+    savedRoutes.forEach((route, index) => {
+      addSavedRoute(route, index);
+    });
+  };
+  
+  const setupMapControls = async () => {
+    if (!map.current) return;
+    
+    const mapboxgl = await import('mapbox-gl');
+    
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.default.NavigationControl(), 'top-right');
+    
+    // Add geolocate control
+    map.current.addControl(
+      new mapboxgl.default.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        trackUserLocation: true,
+        showUserHeading: true
+      }),
+      'top-right'
+    );
+  };
+  
+  const generateDensityData = () => {
+    // Generate simulated population density polygons
+    const features = [];
+    const bounds = [
+      [-74.1, 40.6], // SW
+      [-73.9, 40.8]  // NE  
+    ];
+    
+    for (let i = 0; i < 20; i++) {
+      const lng1 = bounds[0][0] + Math.random() * (bounds[1][0] - bounds[0][0]);
+      const lat1 = bounds[0][1] + Math.random() * (bounds[1][1] - bounds[0][1]);
+      const lng2 = lng1 + 0.02;
+      const lat2 = lat1 + 0.02;
+      
+      features.push({
+        type: 'Feature',
+        properties: {
+          density: Math.random() * 100
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [lng1, lat1],
+            [lng2, lat1],
+            [lng2, lat2],
+            [lng1, lat2],
+            [lng1, lat1]
+          ]]
         }
       });
-
-      // Add navigation controls
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-      // Add geolocate control for GPS
-      map.current.addControl(
-        new mapboxgl.GeolocateControl({
-          positionOptions: {
-            enableHighAccuracy: true
-          },
-          trackUserLocation: true,
-          showUserHeading: true
-        }),
-        'top-right'
-      );
-
-    } catch (error) {
-      console.error('Failed to initialize map:', error);
-      setMapError('Failed to initialize map. Please check your Mapbox token.');
     }
-
-    return () => {
-      map.current?.remove();
-      map.current = null;
+    
+    return features;
+  };
+  
+  const addRoutePoint = (coords: [number, number]) => {
+    if (!map.current) return;
+    
+    const routeData = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: currentRoute.concat([coords])
+        }
+      }]
     };
-  }, [center, zoom, onMapClick]);
-
-  // Update markers when locations change
-  useEffect(() => {
-    if (!map.current || !isMapLoaded) return;
-
-    // Clear existing markers
-    markers.current.forEach(marker => marker.remove());
-    markers.current = [];
-
-    // Add user markers
-    userLocations.forEach(user => {
-      const el = document.createElement('div');
-      el.className = 'racing-marker';
-      el.style.cssText = `
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        border: 2px solid ${user.isCurrentUser ? '#ef4444' : '#3b82f6'};
-        background: ${user.isCurrentUser ? '#ef4444' : '#3b82f6'};
-        box-shadow: 0 0 10px ${user.isCurrentUser ? '#ef4444' : '#3b82f6'};
-        cursor: pointer;
-        ${user.isGhostMode ? 'opacity: 0.5;' : ''}
-      `;
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([user.lng, user.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`
-              <div style="color: white; background: #1a1a1a; padding: 8px; border-radius: 4px;">
-                <div style="font-weight: bold; margin-bottom: 4px;">${user.username}</div>
-                <div style="font-size: 12px; opacity: 0.8;">
-                  ${user.isCurrentUser ? 'You' : 'Racer'}
-                  ${user.isGhostMode ? ' (Ghost Mode)' : ''}
-                </div>
-              </div>
-            `)
-        )
-        .addTo(map.current!);
-
-      markers.current.push(marker);
+    
+    map.current.getSource('current-route').setData(routeData);
+  };
+  
+  const addSavedRoute = (route: any, index: number) => {
+    if (!map.current) return;
+    
+    map.current.addSource(`saved-route-${index}`, {
+      type: 'geojson',
+      data: route.data
     });
-
-    // Add alert markers
-    alerts.forEach(alert => {
-      const el = document.createElement('div');
-      el.className = 'alert-marker';
-      el.style.cssText = `
-        width: 16px;
-        height: 16px;
-        background: #eab308;
-        border: 2px solid #facc15;
-        border-radius: 2px;
-        cursor: pointer;
-        animation: pulse 2s infinite;
-      `;
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([alert.lng, alert.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`
-              <div style="color: white; background: #1a1a1a; padding: 8px; border-radius: 4px;">
-                <div style="font-weight: bold; margin-bottom: 4px; color: #eab308;">
-                  ${alert.type.toUpperCase()} Alert
-                </div>
-                ${alert.description ? `<div style="font-size: 12px; opacity: 0.8;">${alert.description}</div>` : ''}
-              </div>
-            `)
-        )
-        .addTo(map.current!);
-
-      markers.current.push(marker);
+    
+    // Glow effect with multiple layers
+    map.current.addLayer({
+      id: `saved-route-glow-${index}`,
+      type: 'line',
+      source: `saved-route-${index}`,
+      paint: {
+        'line-color': route.color || '#ff6b35',
+        'line-width': 12,
+        'line-opacity': 0.3,
+        'line-blur': 3
+      }
     });
-  }, [userLocations, alerts, isMapLoaded]);
-
-  // Show error state
-  if (mapError || !import.meta.env.VITE_MAPBOX_TOKEN) {
-    return (
-      <div className={`relative ${className} bg-racing-dark border-racing-steel/30 rounded-lg`}>
-        <div className="w-full h-full flex items-center justify-center" style={{ minHeight: '400px' }}>
-          <div className="text-center text-racing-gray p-8">
-            <div className="w-16 h-16 bg-racing-red/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-racing-red" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Map Unavailable</h3>
-            <p className="text-sm text-racing-gray mb-4">
-              {mapError || 'Mapbox token required for GPS map functionality'}
-            </p>
-            <div className="bg-racing-charcoal rounded-lg p-4 max-w-md mx-auto">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-racing-blue text-lg font-bold">{userLocations.length}</div>
-                  <div className="text-racing-gray text-xs">Active Racers</div>
-                </div>
-                <div>
-                  <div className="text-racing-yellow text-lg font-bold">{alerts.length}</div>
-                  <div className="text-racing-gray text-xs">Live Alerts</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    
+    map.current.addLayer({
+      id: `saved-route-${index}`,
+      type: 'line',
+      source: `saved-route-${index}`,
+      paint: {
+        'line-color': route.color || '#ff6b35',
+        'line-width': 4,
+        'line-opacity': 1
+      }
+    });
+  };
+  
+  const toggleMapStyle = (newStyle: 'navigation' | 'satellite' | 'dark') => {
+    if (!map.current) return;
+    setMapStyle(newStyle);
+    map.current.setStyle(mapStyles[newStyle]);
+    
+    // Restore layers after style change
+    map.current.once('styledata', () => {
+      setupMapLayers();
+    });
+  };
+  
+  const toggleTraffic = () => {
+    if (!map.current) return;
+    const newVisibility = !showTraffic;
+    setShowTraffic(newVisibility);
+    map.current.setLayoutProperty(
+      'traffic-congestion', 
+      'visibility', 
+      newVisibility ? 'visible' : 'none'
     );
-  }
-
+  };
+  
+  const toggleDensity = () => {
+    if (!map.current) return;
+    const newVisibility = !showDensity;
+    setShowDensity(newVisibility);
+    map.current.setLayoutProperty(
+      'population-density', 
+      'visibility', 
+      newVisibility ? 'visible' : 'none'
+    );
+  };
+  
+  const zoomToOverview = () => {
+    if (!map.current) return;
+    map.current.flyTo({
+      center: center,
+      zoom: 10,
+      pitch: 0,
+      bearing: 0
+    });
+  };
+  
+  const finishRoute = () => {
+    if (currentRoute.length < 2) return;
+    
+    const newRoute = {
+      name: `Route ${Date.now()}`,
+      color: '#ff6b35',
+      data: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: { name: `Route ${Date.now()}` },
+          geometry: {
+            type: 'LineString',
+            coordinates: currentRoute
+          }
+        }]
+      }
+    };
+    
+    onRouteSelect?.(newRoute);
+    setIsDrawingRoute(false);
+    setCurrentRoute([]);
+    
+    // Clear current route display
+    map.current?.getSource('current-route').setData({
+      type: 'FeatureCollection',
+      features: []
+    });
+  };
+  
   return (
     <div className={`relative ${className}`}>
+      {/* Map container */}
       <div 
-        ref={mapContainer}
-        className="w-full h-full"
+        ref={mapContainer} 
+        className="w-full h-full" 
         style={{ minHeight: '400px' }}
       />
       
-      {/* Map loading overlay */}
-      {!isMapLoaded && (
-        <div className="absolute inset-0 bg-racing-dark/80 flex items-center justify-center">
-          <div className="text-center text-white">
-            <div className="w-8 h-8 border-2 border-racing-blue border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p className="text-sm">Loading GPS Map...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Map info overlay */}
+      {/* Racing-style UI overlay */}
       {isMapLoaded && (
-        <div className="absolute top-4 left-4 bg-racing-charcoal/90 backdrop-blur-sm rounded-lg p-3 text-white text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
-            <span>GPS Active</span>
+        <>
+          {/* Top control bar */}
+          <div className="absolute top-4 left-4 right-4 z-10">
+            <div className="bg-racing-dark/90 backdrop-blur-sm border border-racing-steel/30 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                {/* Map style selector */}
+                <div className="flex space-x-2">
+                  <Button
+                    variant={mapStyle === 'navigation' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => toggleMapStyle('navigation')}
+                    className="text-xs"
+                  >
+                    <Navigation className="w-3 h-3 mr-1" />
+                    NAV
+                  </Button>
+                  <Button
+                    variant={mapStyle === 'satellite' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => toggleMapStyle('satellite')}
+                    className="text-xs"
+                  >
+                    <Satellite className="w-3 h-3 mr-1" />
+                    SAT
+                  </Button>
+                  <Button
+                    variant={mapStyle === 'dark' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => toggleMapStyle('dark')}
+                    className="text-xs"
+                  >
+                    <Layers className="w-3 h-3 mr-1" />
+                    DARK
+                  </Button>
+                </div>
+                
+                {/* Overlay toggles */}
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <label className="text-xs text-racing-gray">TRAFFIC</label>
+                    <Switch
+                      checked={showTraffic}
+                      onCheckedChange={toggleTraffic}
+                      className="scale-75"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="text-xs text-racing-gray">DENSITY</label>
+                    <Switch
+                      checked={showDensity}
+                      onCheckedChange={toggleDensity}
+                      className="scale-75"
+                    />
+                  </div>
+                </div>
+                
+                {/* Quick actions */}
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={zoomToOverview}
+                    className="text-xs"
+                  >
+                    <ZoomOut className="w-3 h-3 mr-1" />
+                    OVERVIEW
+                  </Button>
+                  <Button
+                    variant={isDrawingRoute ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setIsDrawingRoute(!isDrawingRoute)}
+                    className="text-xs"
+                  >
+                    <Route className="w-3 h-3 mr-1" />
+                    {isDrawingRoute ? 'DRAWING' : 'ROUTE'}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+          
+          {/* Route drawing instructions */}
+          {isDrawingRoute && (
+            <div className="absolute top-20 left-4 right-4 z-10">
+              <div className="bg-racing-blue/90 backdrop-blur-sm border border-racing-blue/50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-white">
+                    Click on the map to add route points
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      onClick={finishRoute}
+                      disabled={currentRoute.length < 2}
+                      className="text-xs"
+                    >
+                      SAVE ROUTE
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsDrawingRoute(false);
+                        setCurrentRoute([]);
+                      }}
+                      className="text-xs"
+                    >
+                      CANCEL
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Traffic legend */}
+          {showTraffic && (
+            <div className="absolute bottom-4 left-4 z-10">
+              <div className="bg-racing-dark/90 backdrop-blur-sm border border-racing-steel/30 rounded-lg p-3">
+                <div className="text-xs text-racing-gray mb-2">TRAFFIC</div>
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-1 bg-racing-green"></div>
+                    <span className="text-xs text-white">Free Flow</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-1 bg-yellow-400"></div>
+                    <span className="text-xs text-white">Moderate</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-1 bg-orange-400"></div>
+                    <span className="text-xs text-white">Heavy</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-1 bg-racing-red"></div>
+                    <span className="text-xs text-white">Severe</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Saved routes panel */}
+          {savedRoutes.length > 0 && (
+            <div className="absolute bottom-4 right-4 z-10">
+              <div className="bg-racing-dark/90 backdrop-blur-sm border border-racing-steel/30 rounded-lg p-3">
+                <div className="text-xs text-racing-gray mb-2">SAVED ROUTES</div>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {savedRoutes.map((route, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <div 
+                        className="w-3 h-1 rounded"
+                        style={{ backgroundColor: route.color || '#ff6b35' }}
+                      ></div>
+                      <span className="text-xs text-white truncate">
+                        {route.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
