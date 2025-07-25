@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, AlertTriangle } from 'lucide-react';
+import { useGeolocation } from '@/hooks/use-geolocation';
 
 interface LocationPermissionModalProps {
   isOpen: boolean;
@@ -9,44 +11,38 @@ interface LocationPermissionModalProps {
 }
 
 export function LocationPermissionModal({ isOpen, onPermissionGranted }: LocationPermissionModalProps) {
-  const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string>('');
+  
+  const { 
+    isLoading, 
+    error: geoError, 
+    lat, 
+    lng, 
+    getCurrentPosition 
+  } = useGeolocation({
+    enableHighAccuracy: true,
+    timeout: 5000,
+    maximumAge: 3000,
+    watchPosition: false
+  });
 
-  const requestLocationPermission = async () => {
-    setIsRequesting(true);
-    setError('');
-
-    try {
-      // Request high-accuracy location permission
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
-        );
-      });
-
-      console.log('✅ Location permission granted:', position.coords);
+  // Handle successful location
+  React.useEffect(() => {
+    if (lat !== null && lng !== null) {
       onPermissionGranted();
-    } catch (error: any) {
-      console.error('❌ Location permission error:', error);
-      
-      if (error.code === 1) {
-        setError('Location access was denied. Please enable location services in your browser settings and try again.');
-      } else if (error.code === 2) {
-        setError('Location unavailable. Please check your device GPS and try again.');
-      } else if (error.code === 3) {
-        setError('Location request timed out. Please try again.');
-      } else {
-        setError('Unable to access your location. Please ensure location services are enabled.');
-      }
-    } finally {
-      setIsRequesting(false);
     }
+  }, [lat, lng, onPermissionGranted]);
+
+  // Handle geolocation errors
+  React.useEffect(() => {
+    if (geoError) {
+      setError(geoError);
+    }
+  }, [geoError]);
+
+  const handleRequestLocation = () => {
+    setError('');
+    getCurrentPosition();
   };
 
   if (!isOpen) return null;
@@ -74,14 +70,14 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
           )}
           
           <Button
-            onClick={requestLocationPermission}
-            disabled={isRequesting}
+            onClick={handleRequestLocation}
+            disabled={isLoading}
             className="w-full bg-racing-blue hover:bg-racing-blue/80 text-white"
           >
-            {isRequesting ? (
+            {isLoading ? (
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Requesting Location...</span>
+                <span>Getting Location...</span>
               </div>
             ) : (
               'Enable Location'

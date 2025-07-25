@@ -311,16 +311,24 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlter
       },
       (error) => {
         console.error('Location tracking error:', error);
-        toast.error(
-          error.message === "User denied Geolocation"
-            ? "Location permission denied. Enable GPS for navigation."
-            : "Could not get your location. Please try again."
-        );
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error("Location permission denied. Enable GPS for navigation.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error("GPS signal unavailable. Please try again.");
+            break;
+          case error.TIMEOUT:
+            toast.error("GPS timeout. Retrying...");
+            break;
+          default:
+            toast.error("Could not get your location. Please try again.");
+        }
       },
       {
         enableHighAccuracy: true,
         timeout: 5000,
-        maximumAge: 1000
+        maximumAge: 3000
       }
     );
   }, [onLocationUpdate]);
