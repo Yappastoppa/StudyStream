@@ -1,0 +1,52 @@
+Prompt for Agent (Sonnet 4):
+
+⸻
+
+Context:
+I’m developing a web-based navigation application using React 18, TypeScript, Vite, and Mapbox GL JS (plus Mapbox Directions API for routing). I’ve implemented:
+	•	Waze-style and Professional navigation UIs (turn instructions, ETA, speed, reports)
+	•	Crowdsourced hazard/incident reporting and alerts
+	•	Route selection/alternatives and re-routing
+	•	Real-time map tracking and navigation logic
+This app is a PWA, designed for cross-device use and possible offline capability.
+
+Screenshots for reference:
+[Attach your recent UI/UX screenshots here, including map/routing overviews, alternate route displays, and driving screens.]
+
+⸻
+
+What I want you to do:
+	1.	Feature Parity Audit:
+	•	Based on the screenshots and codebase, compare my implementation to Waze/Google Maps/Apple Maps. What features am I missing or could be improved for a truly competitive, “pro-grade” navigation experience?
+	•	Specifically, review:
+	•	Alternate route preview/selection UI
+	•	Hazards/incidents display and reporting flow
+	•	Route re-calculation (on deviation or by user choice)
+	•	Lane guidance, speed camera, and real-time traffic overlays
+	•	Voice turn-by-turn guidance and offline fallback
+	•	Any gaps in PWA/offline UX, or mobile app polish
+	2.	Best Practices & Deep Dives:
+	•	For each missing or improvable feature, explain the best way to implement it with my current stack (React + Mapbox + PWA). Include code patterns, Mapbox API tips, or architectural advice.
+	•	For traffic/lane guidance/voice, point to real-world Mapbox API fields/flows I should use.
+	•	For offline support, detail what’s feasible on web (e.g., how to cache map tiles and routes most effectively).
+	3.	Hidden Challenges:
+	•	What edge cases or “gotchas” should I expect (e.g., Mapbox Directions limits, handling map style changes, race conditions on route updates, etc.)?
+	•	What’s hard to do on web that’s easy in native mobile? Any workarounds?
+	4.	Code, UI/UX, and Open Source:
+	•	Suggest open-source repos or projects with code examples similar to my goals.
+	•	Critique my current UI/UX flow—where can it be clearer, more driver-friendly, or more “polished”?
+	•	Any React/Mapbox performance optimizations or accessibility tips?
+
+You may refer to the attached screenshots for concrete UI flow critique.
+I want an actionable, honest technical review + practical next steps for evolving my navigation system into a best-in-class web (and eventually mobile) app. Prioritize solutions that don’t break my existing features, and point out the latest “industry best practice” where relevant.
+
+⸻
+
+End Prompt
+
+⸻
+
+Tips:
+	•	Attach several key screenshots for visual reference before sending!
+	•	If you want ultra-detailed code samples, specify that in the prompt.
+	•	You can add “If you need to see the current code for X component, let me know and I’ll provide it.”

@@ -34,6 +34,10 @@ import { RouteAlerts, sampleAlerts } from '@/components/navigation/route-alerts'
 import { FloatingSearch } from '@/components/navigation/floating-search';
 import { GuidanceSimulator } from '@/components/navigation/guidance-simulator';
 import { ProfessionalNavUI } from '@/components/navigation/professional-nav-ui';
+import { AlternativeRoutes } from '@/components/navigation/alternative-routes';
+import { VoiceNavigation } from '@/components/navigation/voice-navigation';
+import { LaneGuidanceDisplay, extractLaneGuidance } from '@/components/navigation/lane-guidance';
+import { OfflineRoutes } from '@/components/navigation/offline-routes';
 import { useNavigation } from '@/hooks/use-navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
 
@@ -64,7 +68,7 @@ export function RacingMap({
   const [showDensity, setShowDensity] = useState(false);
   const [showHighwaysOnly, setShowHighwaysOnly] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState<any[]>([]);
+  const [drawingRoute, setDrawingRoute] = useState<any[]>([]);
   const [navigationMode, setNavigationMode] = useState(false);
   const [routeStart, setRouteStart] = useState<[number, number] | null>(null);
   const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
@@ -85,9 +89,11 @@ export function RacingMap({
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
-  // Navigation hook
+  // Enhanced navigation hook with enterprise features
   const {
     isNavigating,
+    currentRoute,
+    alternativeRoutes,
     currentStep,
     remainingSteps,
     remainingDistance,
@@ -95,7 +101,13 @@ export function RacingMap({
     eta,
     voiceEnabled,
     setVoiceEnabled,
+    showAlternatives,
+    setShowAlternatives,
+    routeOptions,
+    setRouteOptions,
     startNavigation,
+    startNavigationWithRoute,
+    planRouteWithAlternatives,
     stopNavigation,
     searchPlaces,
     recenterMap
@@ -107,16 +119,20 @@ export function RacingMap({
       setCurrentSpeed(speed || 0);
       
       if (isNavigating && map.current) {
-        // Auto-follow user during navigation with 3D tilt like Waze
+        // Auto-follow user during navigation with enhanced 3D perspective
         map.current.flyTo({
           center: location,
           bearing: heading || 0,
-          zoom: 17, // Closer zoom for driving
-          pitch: 60, // 3D tilt for driving perspective
+          zoom: 17,
+          pitch: 60,
           speed: 1.5,
           essential: true
         });
       }
+    },
+    onRouteAlternatives: (routes) => {
+      // Show alternative routes when available
+      setShowAlternatives(true);
     }
   });
   
@@ -435,7 +451,7 @@ export function RacingMap({
   };
   
   const finishRoute = () => {
-    if (currentRoute.length < 2) return;
+    if (drawingRoute.length < 2) return;
     
     const newRoute = {
       name: `Route ${Date.now()}`,
@@ -447,7 +463,7 @@ export function RacingMap({
           properties: { name: `Route ${Date.now()}` },
           geometry: {
             type: 'LineString',
-            coordinates: currentRoute
+            coordinates: drawingRoute
           }
         }]
       }
@@ -455,7 +471,7 @@ export function RacingMap({
     
     onRouteSelect?.(newRoute);
     setIsDrawingRoute(false);
-    setCurrentRoute([]);
+    setDrawingRoute([]);
     
     // Clear current route display
     map.current?.getSource('current-route').setData({
@@ -967,12 +983,14 @@ export function RacingMap({
                     size="icon"
                     onClick={() => {
                       setIsDrawingRoute(false);
-                      setCurrentRoute([]);
+                      setDrawingRoute([]);
                       // Clear current route display
-                      map.current?.getSource('current-route').setData({
-                        type: 'FeatureCollection',
-                        features: []
-                      });
+                      if (map.current?.getSource('current-route')) {
+                        map.current.getSource('current-route').setData({
+                          type: 'FeatureCollection',
+                          features: []
+                        });
+                      }
                     }}
                     className="h-8 w-8 text-white/70 hover:text-white hover:bg-racing-steel/20"
                   >
@@ -989,9 +1007,9 @@ export function RacingMap({
                   <div className="bg-racing-steel/20 rounded-lg p-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-white/70">Points added:</span>
-                      <span className="text-racing-blue font-medium">{currentRoute.length}</span>
+                      <span className="text-racing-blue font-medium">{drawingRoute.length}</span>
                     </div>
-                    {currentRoute.length >= 2 && (
+                    {drawingRoute.length >= 2 && (
                       <div className="flex items-center justify-between text-sm mt-1">
                         <span className="text-white/70">Ready to save</span>
                         <span className="text-racing-green">✓</span>
@@ -1002,7 +1020,7 @@ export function RacingMap({
                   <div className="flex space-x-3">
                     <Button
                       onClick={finishRoute}
-                      disabled={currentRoute.length < 2}
+                      disabled={drawingRoute.length < 2}
                       className="flex-1 bg-racing-green/20 hover:bg-racing-green/30 text-racing-green border border-racing-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Save Route
@@ -1010,12 +1028,14 @@ export function RacingMap({
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setCurrentRoute([]);
+                        setDrawingRoute([]);
                         // Clear current route display
-                        map.current?.getSource('current-route').setData({
-                          type: 'FeatureCollection',
-                          features: []
-                        });
+                        if (map.current?.getSource('current-route')) {
+                          map.current.getSource('current-route').setData({
+                            type: 'FeatureCollection',
+                            features: []
+                          });
+                        }
                       }}
                       className="bg-racing-steel/20 border-racing-steel/30 text-white/70 hover:text-white hover:bg-racing-steel/30"
                     >
@@ -1126,6 +1146,58 @@ export function RacingMap({
           onClose={() => setShowLeaderboard(false)}
         />
       )}
+
+      {/* Enhanced Navigation Components */}
+      
+      {/* Alternative Routes Modal */}
+      <AlternativeRoutes
+        isVisible={showAlternatives}
+        routes={alternativeRoutes}
+        origin={routeStart ? "Current Location" : ""}
+        destination={routeEnd ? "Destination" : ""}
+        onRouteSelect={(route) => {
+          startNavigationWithRoute(route);
+        }}
+        onClose={() => setShowAlternatives(false)}
+        onLeaveNow={() => {
+          if (alternativeRoutes.length > 0) {
+            startNavigationWithRoute(alternativeRoutes[0]);
+          }
+        }}
+        onLeaveLater={() => {
+          setShowAlternatives(false);
+          // Could add scheduling functionality here
+        }}
+      />
+
+      {/* Voice Navigation Control */}
+      {isNavigating && (
+        <div className="fixed top-4 right-4 z-30">
+          <VoiceNavigation
+            isEnabled={voiceEnabled}
+            currentStep={currentStep}
+            remainingDistance={remainingDistance}
+            currentSpeed={currentSpeed}
+            onToggle={setVoiceEnabled}
+          />
+        </div>
+      )}
+
+      {/* Lane Guidance Display */}
+      {isNavigating && currentStep && (
+        <LaneGuidanceDisplay
+          laneData={extractLaneGuidance(currentStep)}
+          isVisible={isNavigating}
+          upcomingManeuver={currentStep.maneuver}
+          distanceToManeuver={remainingDistance}
+        />
+      )}
+
+      {/* Offline Routes Manager */}
+      <OfflineRoutes
+        isVisible={false} // Will be controlled by a future toggle
+        onClose={() => {}}
+      />
       
     </div>
     </ErrorBoundary>

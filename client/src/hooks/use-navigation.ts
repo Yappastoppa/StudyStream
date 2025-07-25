@@ -1,5 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+interface VoiceInstruction {
+  distanceAlongGeometry: number;
+  announcement: string;
+  ssmlAnnouncement?: string;
+}
+
+interface BannerInstruction {
+  text: string;
+  type: 'primary' | 'secondary' | 'sub';
+  modifier?: string;
+  degrees?: number;
+  components?: Array<{
+    text: string;
+    type: string;
+    lanes?: Lane[];
+  }>;
+}
+
+interface Lane {
+  active: boolean;
+  valid: boolean;
+  indications: string[];
+  valid_indication?: string;
+}
+
 interface NavigationStep {
   instruction: string;
   distance: number;
@@ -14,6 +39,11 @@ interface NavigationStep {
   geometry: {
     coordinates: [number, number][];
   };
+  voiceInstructions?: VoiceInstruction[];
+  bannerInstructions?: BannerInstruction[];
+  intersections?: Array<{
+    lanes?: Lane[];
+  }>;
 }
 
 interface NavigationRoute {
@@ -40,11 +70,13 @@ interface UseNavigationProps {
   mapboxToken: string;
   map?: any;
   onLocationUpdate?: (location: [number, number], speed?: number, heading?: number) => void;
+  onRouteAlternatives?: (routes: NavigationRoute[]) => void;
 }
 
-export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigationProps) {
+export function useNavigation({ mapboxToken, map, onLocationUpdate, onRouteAlternatives }: UseNavigationProps) {
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<NavigationRoute | null>(null);
+  const [alternativeRoutes, setAlternativeRoutes] = useState<NavigationRoute[]>([]);
   const [currentStep, setCurrentStep] = useState<NavigationStep | null>(null);
   const [remainingSteps, setRemainingSteps] = useState<NavigationStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -55,6 +87,13 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigat
   const [eta, setEta] = useState('');
   const [isOffRoute, setIsOffRoute] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [showAlternatives, setShowAlternatives] = useState(false);
+  const [routeOptions, setRouteOptions] = useState<RouteOptions>({
+    profile: 'driving-traffic',
+    avoidHighways: false,
+    avoidTolls: false,
+    avoidFerries: false
+  });
 
   const watchPositionId = useRef<number | null>(null);
   const routeSource = useRef<string>('navigation-route');
@@ -342,6 +381,100 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigat
     }
   }, [map]);
 
+  // Enhanced route planning with alternatives, voice, and banner instructions
+  const planRouteWithAlternatives = useCallback(async (start: [number, number], end: [number, number], options?: Partial<RouteOptions>) => {
+    if (!mapboxToken) return null;
+
+    try {
+      const routeOpts = { ...routeOptions, ...options };
+      
+      const params = new URLSearchParams({
+        geometries: 'geojson',
+        steps: 'true',
+        alternatives: 'true', // Get alternative routes
+        voice_instructions: 'true', // Enable voice guidance
+        banner_instructions: 'true', // Enable lane guidance
+        access_token: mapboxToken,
+        overview: 'full',
+        annotations: 'distance,duration,speed,congestion'
+      });
+
+      if (routeOpts.avoidHighways) params.append('exclude', 'motorway');
+      if (routeOpts.avoidTolls) params.append('exclude', 'toll');
+      if (routeOpts.avoidFerries) params.append('exclude', 'ferry');
+
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/${routeOpts.profile}/${start.join(',')};${end.join(',')}?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.routes && data.routes.length > 0) {
+        // Process all route alternatives
+        const routes = data.routes.map((route: any, index: number) => ({
+          ...route,
+          id: `route_${index}_${Date.now()}`
+        }));
+
+        setAlternativeRoutes(routes);
+        
+        // Notify parent component about alternatives
+        if (onRouteAlternatives) {
+          onRouteAlternatives(routes);
+        }
+
+        return routes;
+      }
+    } catch (error) {
+      console.error('Route planning failed:', error);
+      return null;
+    }
+  }, [mapboxToken, routeOptions, onRouteAlternatives]);
+
+  // Start navigation with selected route
+  const startNavigationWithRoute = useCallback(async (selectedRoute?: NavigationRoute) => {
+    if (!selectedRoute && alternativeRoutes.length === 0) return null;
+
+    const route = selectedRoute || alternativeRoutes[0];
+    
+    try {
+      setCurrentRoute(route);
+      setIsNavigating(true);
+      setShowAlternatives(false);
+      
+      // Set up navigation steps with enhanced data
+      if (route.legs && route.legs.length > 0) {
+        const allSteps = route.legs.flatMap((leg: any) => leg.steps);
+        setRemainingSteps(allSteps);
+        setCurrentStep(allSteps[0] || null);
+        setCurrentStepIndex(0);
+      }
+
+      // Calculate initial values
+      setRemainingDistance(route.distance);
+      setRemainingTime(route.duration);
+      
+      // Update ETA
+      const arrivalTime = new Date(Date.now() + route.duration * 1000);
+      setEta(arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+      // Draw route on map
+      drawRoute(route);
+      
+      // Start location tracking
+      startLocationTracking();
+
+      return route;
+    } catch (error) {
+      console.error('Navigation start failed:', error);
+      return null;
+    }
+  }, [alternativeRoutes, drawRoute, startLocationTracking]);
+
   // Recenter map on user location
   const recenterMap = useCallback(() => {
     if (map && userLocation) {
@@ -368,6 +501,7 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigat
   return {
     isNavigating,
     currentRoute,
+    alternativeRoutes,
     currentStep,
     remainingSteps,
     userLocation,
@@ -378,7 +512,13 @@ export function useNavigation({ mapboxToken, map, onLocationUpdate }: UseNavigat
     isOffRoute,
     voiceEnabled,
     setVoiceEnabled,
+    showAlternatives,
+    setShowAlternatives,
+    routeOptions,
+    setRouteOptions,
     startNavigation,
+    startNavigationWithRoute,
+    planRouteWithAlternatives,
     stopNavigation,
     searchPlaces,
     recenterMap,
