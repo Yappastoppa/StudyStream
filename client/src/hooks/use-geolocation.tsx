@@ -159,21 +159,56 @@ export function useGeolocation({
   }, []);
 
   useEffect(() => {
-    // 🔥 BYPASS GPS FOR TESTING - FORCE NYC COORDINATES
+    // 🔥 ENHANCED SPEEDOMETER SIMULATION FOR TESTING
     console.log('🔥 FORCING GPS BYPASS - Using NYC coordinates for testing');
+    
+    let simulationInterval: NodeJS.Timeout;
+    let currentSpeed = 0;
+    let targetSpeed = 0;
+    let timeAccumulator = 0;
+    
+    // Initial position
     setTimeout(() => {
       setState({
         lat: 40.7128,
         lng: -74.0060,
         accuracy: 10,
         speed: 0,
-        heading: null,
+        heading: Math.random() * 360,
         error: null,
         isLoading: false
       });
+      
+      // Start speed simulation
+      simulationInterval = setInterval(() => {
+        timeAccumulator += 0.1;
+        
+        // Change target speed every 3-8 seconds
+        if (Math.random() < 0.02) {
+          targetSpeed = Math.random() * 120; // 0-120 km/h
+        }
+        
+        // Smooth acceleration/deceleration
+        const speedDiff = targetSpeed - currentSpeed;
+        currentSpeed += speedDiff * 0.1; // 10% adjustment per update
+        
+        // Add some realistic variation
+        const variation = (Math.random() - 0.5) * 2; // ±1 km/h variation
+        const displaySpeed = Math.max(0, currentSpeed + variation);
+        
+        setState(prev => ({
+          ...prev,
+          speed: displaySpeed,
+          heading: (prev.heading || 0) + (Math.random() - 0.5) * 5 // Slight heading drift
+        }));
+      }, 100); // Update every 100ms for smooth speedometer
+      
     }, 1000); // Simulate 1 second GPS "acquisition"
     
     return () => {
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+      }
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
       }
