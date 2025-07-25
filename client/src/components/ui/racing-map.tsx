@@ -1,44 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { 
   Navigation, 
-  Satellite, 
-  Zap, 
-  Eye, 
-  EyeOff, 
-  Crosshair, 
-  ZoomIn, 
-  ZoomOut,
-  Route,
-  MapPin,
-  Layers,
-  Trophy,
-  Pencil,
-  Activity,
-  Search
+  Search,
+  MapPin
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
-import { AIRoutes } from '@/components/racing/ai-routes';
-import { RouteCreator } from '@/components/racing/route-creator';
-import { SimulationMode } from '@/components/racing/simulation-mode';
-import { RouteHeatmap } from '@/components/racing/route-heatmap';
-import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
-import { TurnByTurnNavigation } from '@/components/navigation/turn-by-turn';
-import { RoutePlanner } from '@/components/navigation/route-planner';
-import { NavigationControls } from '@/components/navigation/navigation-controls';
-import { WazeStyleNavigation } from '@/components/navigation/waze-style-navigation';
-import { RouteAlerts, sampleAlerts } from '@/components/navigation/route-alerts';
 import { FloatingSearch } from '@/components/navigation/floating-search';
-import { GuidanceSimulator } from '@/components/navigation/guidance-simulator';
-import { ProfessionalNavUI } from '@/components/navigation/professional-nav-ui';
 import { AlternativeRoutes } from '@/components/navigation/alternative-routes';
-import { VoiceNavigation } from '@/components/navigation/voice-navigation';
-import { LaneGuidanceDisplay, extractLaneGuidance } from '@/components/navigation/lane-guidance';
-import { OfflineRoutes } from '@/components/navigation/offline-routes';
-import { LocationTracker } from '@/components/navigation/location-tracker';
+import { LocationPermissionModal } from '@/components/location-permission-modal';
 import { useNavigation } from '@/hooks/use-navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
 import toast from 'react-hot-toast';
@@ -62,18 +32,14 @@ export function RacingMap({
 }: RacingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
+  const userMarkerRef = useRef<any>(null);
+  const lastUserLocationRef = useRef<[number, number] | null>(null);
+  const manualPanTimeoutRef = useRef<NodeJS.Timeout>();
   
-  // Map state
+  // Core app state
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [mapStyle, setMapStyle] = useState<'navigation' | 'satellite' | 'dark'>('dark');
-  const [showTraffic, setShowTraffic] = useState(false);
-  const [showDensity, setShowDensity] = useState(false);
-  const [showHighwaysOnly, setShowHighwaysOnly] = useState(false);
-  const [isDrawingRoute, setIsDrawingRoute] = useState(false);
-  const [drawingRoute, setDrawingRoute] = useState<any[]>([]);
-  const [navigationMode, setNavigationMode] = useState(false);
-  const [routeStart, setRouteStart] = useState<[number, number] | null>(null);
-  const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(true);
   
   // Live Navigation State
   const [isDriverView, setIsDriverView] = useState(true);
@@ -84,30 +50,13 @@ export function RacingMap({
   const [isGPSLost, setIsGPSLost] = useState(false);
   const [showCenterButton, setShowCenterButton] = useState(false);
   const [isRerouting, setIsRerouting] = useState(false);
-  const lastUserLocationRef = useRef<[number, number] | null>(null);
-  const manualPanTimeoutRef = useRef<NodeJS.Timeout>();
   
-  // Feature toggles
-  const [showOverlays, setShowOverlays] = useState(false);
-  const [showAIRoutes, setShowAIRoutes] = useState(false);
-  const [showRouteCreator, setShowRouteCreator] = useState(false);
-  const [showSimulation, setShowSimulation] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showRoutePlanner, setShowRoutePlanner] = useState(false);
+  // UI state
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
-  const [showGuidanceSimulator, setShowGuidanceSimulator] = useState(false);
-  const [useProNavUI, setUseProNavUI] = useState(false);
-  const [currentSpeed, setCurrentSpeed] = useState<number>(0);
-  const [speedLimit, setSpeedLimit] = useState<number | undefined>(undefined);
-  const [activeNavigationRoute, setActiveNavigationRoute] = useState<any>(null);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-  
-  // Car marker reference
-  const userMarkerRef = useRef<any>(null);
 
-  // Enhanced navigation hook with enterprise features
+  // Enhanced navigation hook with live GPS tracking
   const {
     isNavigating,
     currentRoute,
@@ -136,8 +85,7 @@ export function RacingMap({
       setUserLocation(location);
       setUserSpeed(speed || 0);
       setUserHeading(heading || 0);
-      setCurrentSpeed(speed || 0);
-      setIsGPSLost(false); // GPS signal recovered
+      setIsGPSLost(false);
       
       // Update car marker position and rotation
       updateCarMarker(location, heading || 0);
@@ -165,10 +113,50 @@ export function RacingMap({
       lastUserLocationRef.current = location;
     },
     onRouteAlternatives: (routes) => {
-      // Show alternative routes when available
       setShowAlternatives(true);
     }
   });
+
+  // Check GPS permission on mount
+  useEffect(() => {
+    const checkLocationPermission = async () => {
+      if (!navigator.geolocation) {
+        setShowLocationModal(true);
+        return;
+      }
+
+      try {
+        // Try to get current position to test permission
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 60000
+          });
+        });
+        
+        // Cache last known location
+        const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
+        setUserLocation(coords);
+        setHasLocationPermission(true);
+        setShowLocationModal(false);
+        
+        console.log('✅ Location permission already granted');
+      } catch (error) {
+        console.log('❌ Location permission required');
+        setShowLocationModal(true);
+      }
+    };
+
+    checkLocationPermission();
+  }, []);
+
+  // Location permission handler
+  const handleLocationPermissionGranted = () => {
+    setHasLocationPermission(true);
+    setShowLocationModal(false);
+    toast.success("Location access enabled!");
+  };
 
   // Off-route detection function
   const checkOffRoute = (userLocation: [number, number]) => {
@@ -191,14 +179,18 @@ export function RacingMap({
 
   // Handle off-route situation
   const handleOffRoute = async () => {
-    if (isRerouting || !userLocation || !routeEnd) return;
+    if (isRerouting || !userLocation) return;
     
     setIsRerouting(true);
     toast.loading("You're off route. Rerouting...", { id: 'rerouting' });
     
     try {
-      await planRouteWithAlternatives(userLocation, routeEnd, routeOptions);
-      toast.success("New route calculated", { id: 'rerouting' });
+      // Get destination from current route
+      if (currentRoute && currentRoute.geometry?.coordinates?.length > 0) {
+        const destination = currentRoute.geometry.coordinates[currentRoute.geometry.coordinates.length - 1];
+        await planRouteWithAlternatives(userLocation, destination as [number, number], routeOptions);
+        toast.success("New route calculated", { id: 'rerouting' });
+      }
     } catch (error) {
       toast.error("Failed to recalculate route", { id: 'rerouting' });
     } finally {
@@ -365,6 +357,36 @@ export function RacingMap({
       }
     } catch (error) {
       console.error('Failed to update car marker:', error);
+    }
+  };
+
+  // Format distance with proper units
+  const formatDistance = (distanceInMeters: number): string => {
+    if (!distanceInMeters || isNaN(distanceInMeters) || distanceInMeters < 0) {
+      return '0 m';
+    }
+    
+    if (distanceInMeters >= 1000) {
+      const km = distanceInMeters / 1000;
+      return `${km.toFixed(1)} km`;
+    } else {
+      return `${Math.round(distanceInMeters)} m`;
+    }
+  };
+
+  // Format time in a readable way
+  const formatTime = (timeInSeconds: number): string => {
+    if (!timeInSeconds || isNaN(timeInSeconds) || timeInSeconds < 0) {
+      return '0 min';
+    }
+    
+    const hours = Math.floor(timeInSeconds / 3600);
+    const minutes = Math.floor((timeInSeconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes} min`;
     }
   };
 
@@ -934,22 +956,49 @@ export function RacingMap({
   return (
     <ErrorBoundary>
       <div className={`relative w-screen h-screen ${className}`}>
-        {/* Map container */}
+        {/* Location Permission Modal - Block everything until permission granted */}
+        <LocationPermissionModal
+          isOpen={showLocationModal && !hasLocationPermission}
+          onPermissionGranted={handleLocationPermissionGranted}
+        />
+
+        {/* Main map container - Hidden until location permission granted */}
         <div 
           ref={mapContainer} 
-          className="w-full h-full absolute inset-0" 
+          className={`w-full h-full absolute inset-0 ${!hasLocationPermission ? 'filter blur-md pointer-events-none' : ''}`}
           style={{ minHeight: '100vh' }}
         >
-          {/* Fallback loading state */}
-          {!isMapLoaded && (
-            <div className="absolute inset-0 bg-black flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-8 h-8 border-2 border-racing-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-white/70">Loading map...</p>
+          {/* Loading state - only show after location permission granted */}
+          {!isMapLoaded && hasLocationPermission && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center z-50">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 border-4 border-racing-blue border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div className="text-white text-lg">Loading GhostRacer Navigation...</div>
+                <div className="text-white/60 text-sm">Initializing live GPS tracking</div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Block all functionality until location permission */}
+        {!hasLocationPermission && (
+          <div className="absolute inset-0 bg-black/50 z-40 pointer-events-none" />
+        )}
+
+        {/* Alternative Routes Panel - Clean route selection */}
+        {hasLocationPermission && showAlternatives && alternativeRoutes.length > 0 && (
+          <AlternativeRoutes
+            routes={alternativeRoutes}
+            isVisible={showAlternatives}
+            onClose={() => setShowAlternatives(false)}
+            onRouteSelect={(selectedRoute) => {
+              startNavigationWithRoute(selectedRoute);
+              setShowAlternatives(false);
+            }}
+            formatDistance={formatDistance}
+            formatTime={formatTime}
+          />
+        )}
       
 
       

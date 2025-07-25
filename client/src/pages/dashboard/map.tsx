@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RacingMap } from "@/components/ui/racing-map";
+import { CleanRacingMap } from "@/components/ui/clean-racing-map";
 import { SpeedHud } from "@/components/racing/speed-hud";
 import { ActionButtons } from "@/components/racing/action-buttons";
 import { SideMenu } from "@/components/racing/side-menu";
@@ -290,23 +290,10 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-racing-dark">
       {/* Full Screen Racing Map */}
-      <RacingMap
+      <CleanRacingMap
         center={lat && lng ? [lng, lat] : [-74.006, 40.7128]}
         zoom={15}
         className="absolute inset-0 z-0"
-        savedRoutes={savedRoutes}
-        onRouteSelect={(route) => {
-          setSavedRoutes(prev => [...prev, route]);
-          toast({
-            title: "Route Saved",
-            description: `${route.name} has been saved to your routes.`,
-          });
-        }}
-        onNavigationStart={(start, end) => {
-          setNavigationStart(start);
-          setNavigationEnd(end);
-          setShowNavigationPanel(true);
-        }}
       />
 
       {/* Minimal Floating Status Indicator - Top Right */}
