@@ -32,6 +32,8 @@ import { NavigationControls } from '@/components/navigation/navigation-controls'
 import { WazeStyleNavigation } from '@/components/navigation/waze-style-navigation';
 import { RouteAlerts, sampleAlerts } from '@/components/navigation/route-alerts';
 import { FloatingSearch } from '@/components/navigation/floating-search';
+import { GuidanceSimulator } from '@/components/navigation/guidance-simulator';
+import { ProfessionalNavUI } from '@/components/navigation/professional-nav-ui';
 import { useNavigation } from '@/hooks/use-navigation';
 
 interface RacingMapProps {
@@ -65,7 +67,6 @@ export function RacingMap({
   const [navigationMode, setNavigationMode] = useState(false);
   const [routeStart, setRouteStart] = useState<[number, number] | null>(null);
   const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
-  const [navigationRoute, setNavigationRoute] = useState<any>(null);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showAIRoutes, setShowAIRoutes] = useState(false);
   const [showRouteCreator, setShowRouteCreator] = useState(false);
@@ -74,9 +75,12 @@ export function RacingMap({
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showRoutePlanner, setShowRoutePlanner] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
+  const [showGuidanceSimulator, setShowGuidanceSimulator] = useState(false);
+  const [useProNavUI, setUseProNavUI] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [currentSpeed, setCurrentSpeed] = useState<number>(0);
   const [speedLimit, setSpeedLimit] = useState<number | undefined>(undefined);
+  const [activeNavigationRoute, setActiveNavigationRoute] = useState<any>(null);
   
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
   
@@ -658,17 +662,7 @@ export function RacingMap({
         style={{ minHeight: '100vh' }}
       />
       
-      {/* Waze-Style Navigation UI */}
-      <WazeStyleNavigation
-        isActive={isNavigating}
-        currentStep={currentStep || undefined}
-        eta={eta}
-        remainingDistance={remainingDistance}
-        remainingTime={remainingTime}
-        currentSpeed={currentSpeed}
-        speedLimit={speedLimit}
-        onStopNavigation={() => stopNavigation()}
-      />
+
       
       {/* Route Alerts */}
       <RouteAlerts
@@ -726,6 +720,50 @@ export function RacingMap({
         </div>
       )}
 
+      {/* Advanced Navigation UI Options */}
+      {isNavigating && (
+        <>
+          {/* Choose between Waze-style or Professional UI */}
+          {useProNavUI ? (
+            <ProfessionalNavUI
+              isActive={isNavigating}
+              currentStep={currentStep || undefined}
+              upcomingSteps={remainingSteps.slice(0, 5)}
+              eta={eta}
+              remainingDistance={remainingDistance}
+              remainingTime={remainingTime}
+              currentSpeed={currentSpeed}
+              speedLimit={speedLimit}
+              voiceEnabled={voiceEnabled}
+              onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
+              onStopNavigation={() => stopNavigation()}
+              onRecenter={recenterMap}
+            />
+          ) : (
+            <WazeStyleNavigation
+              isActive={isNavigating}
+              currentStep={currentStep || undefined}
+              eta={eta}
+              remainingDistance={remainingDistance}
+              remainingTime={remainingTime}
+              currentSpeed={currentSpeed}
+              speedLimit={speedLimit}
+              onStopNavigation={() => stopNavigation()}
+            />
+          )}
+          
+          {/* UI Style Toggle */}
+          <div className="absolute top-4 left-4 pointer-events-auto z-50">
+            <Button
+              onClick={() => setUseProNavUI(!useProNavUI)}
+              className="bg-black/80 hover:bg-black/90 border border-white/20 backdrop-blur-md shadow-lg px-3 py-2 rounded-full text-xs text-white/70 hover:text-white"
+            >
+              {useProNavUI ? 'Waze Style' : 'Pro UI'}
+            </Button>
+          </div>
+        </>
+      )}
+
       {/* Navigation Controls - Only show when not navigating */}
       {!isNavigating && (
         <NavigationControls
@@ -737,6 +775,14 @@ export function RacingMap({
           onVoiceToggle={() => setVoiceEnabled(!voiceEnabled)}
         />
       )}
+
+      {/* Guidance Simulator */}
+      <GuidanceSimulator
+        route={activeNavigationRoute}
+        map={map.current}
+        isActive={showGuidanceSimulator}
+        onClose={() => setShowGuidanceSimulator(false)}
+      />
       
       {/* Racing-style UI overlay - Hide during navigation for clean Waze-style view */}
       {isMapLoaded && !isNavigating && (
