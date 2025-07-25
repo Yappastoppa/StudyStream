@@ -529,13 +529,22 @@ export function CleanRacingMap({
               weight: route.duration || 0
             }))}
             isVisible={showAlternatives}
+            origin="Current Location"
+            destination="Selected Destination"
             onClose={() => setShowAlternatives(false)}
             onRouteSelect={(selectedRoute) => {
               startNavigationWithRoute(selectedRoute);
               setShowAlternatives(false);
             }}
-            formatDistance={formatDistance}
-            formatTime={formatTime}
+            onLeaveNow={() => {
+              if (alternativeRoutes.length > 0) {
+                startNavigationWithRoute(alternativeRoutes[0]);
+                setShowAlternatives(false);
+              }
+            }}
+            onLeaveLater={() => {
+              setShowAlternatives(false);
+            }}
           />
         )}
 

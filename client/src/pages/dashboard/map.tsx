@@ -56,7 +56,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   const [navigationEnd, setNavigationEnd] = useState<[number, number] | null>(null);
   const [showNavigationPanel, setShowNavigationPanel] = useState(false);
 
-  // Geolocation
+  // Geolocation - fix infinite render loop
   const { 
     lat, 
     lng, 
@@ -66,7 +66,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
   } = useGeolocation({
     enableHighAccuracy: true,
     watchPosition: true,
-    onLocationUpdate: (position) => {
+    onLocationUpdate: useCallback((position: GeolocationPosition) => {
       // Calculate distance traveled
       if (lastPosition) {
         const distance = calculateDistance(
@@ -78,7 +78,7 @@ export default function MapPage({ inviteCode, onLogout }: MapPageProps) {
         setDistanceTraveled(prev => prev + distance);
       }
       setLastPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
-    }
+    }, [lastPosition])
   });
 
   // WebSocket
