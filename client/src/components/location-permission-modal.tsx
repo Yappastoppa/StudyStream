@@ -40,9 +40,19 @@ export function LocationPermissionModal({ isOpen, onPermissionGranted }: Locatio
     }
   }, [geoError]);
 
-  const handleRequestLocation = () => {
+  const handleRequestLocation = async () => {
     setError('');
-    getCurrentPosition();
+    try {
+      await getCurrentPosition();
+      // Add a small delay to ensure location is captured
+      setTimeout(() => {
+        if (lat !== null && lng !== null) {
+          onPermissionGranted();
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Location request failed:', error);
+    }
   };
 
   if (!isOpen) return null;
