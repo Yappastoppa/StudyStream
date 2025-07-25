@@ -1,0 +1,51 @@
+Absolutely! Here’s a clear and actionable prompt to give your agent or dev team to make the map action hubs (floating buttons) evenly spread out using the available vertical space—no matter the viewport size. The map should remain the background, and all controls should “float” clearly above it.
+
+⸻
+
+Prompt: Evenly Distribute Map Controls Vertically, Always Overlay on Map Background
+
+Goal:
+Make all map UI “hub” buttons (floating action controls) evenly distributed in a vertical column, using the available space from top to bottom—even on small or tall screens. The map is always the background; all UI is overlayed and never blocks/interferes with each other.
+
+Key Requirements:
+	1.	Even Spacing:
+	•	Vertically align all map controls in a single column.
+	•	Use justify-between (or equivalent) so each button is evenly spaced from top to bottom of the column, regardless of window height or button count.
+	2.	Overlay on Map Only:
+	•	Map must be the full background (absolute inset-0 or similar).
+	•	All controls (buttons, overlays) should be absolutely positioned on top of the map, never outside it.
+	3.	Responsive:
+	•	The layout must auto-adjust if buttons are added/removed.
+	•	Controls should never overlap or spill off the edge, even on mobile.
+	4.	Safe Area Padding:
+	•	Respect safe-area-inset for notched devices (iOS/Android).
+	•	Add padding top/bottom if needed.
+	5.	Maintain Accessibility:
+	•	All buttons must remain clearly visible and easy to tap/click.
+
+Example (React + Tailwind):
+
+<div className="absolute inset-0">
+  {/* MAPBOX MAP GOES HERE */}
+  <MapComponent ... />
+  <div className="absolute top-0 right-0 h-full flex flex-col justify-between items-end p-6 pointer-events-none z-40">
+    {/* Each button gets pointer-events-auto */}
+    <button className="pointer-events-auto ...">{/* icon1 */}</button>
+    <button className="pointer-events-auto ...">{/* icon2 */}</button>
+    {/* ...more buttons */}
+  </div>
+</div>
+
+Checklist:
+	•	Buttons are always spaced out, top-to-bottom, no matter window size.
+	•	The map is always the full background.
+	•	No overlaps, no cut-off controls, even with 5–10 buttons.
+	•	Works in Chrome, Safari, and mobile browsers.
+
+Pro Tip:
+If you have a dynamic number of buttons, use flex-grow or utility libraries (like react-spread-elements) for perfect vertical spacing.
+
+⸻
+
+Copy-paste this directly to your agent/dev!
+This will get you the “floating, always spread out” vertical control bar you want—clean, modern, and 100% on top of the map!

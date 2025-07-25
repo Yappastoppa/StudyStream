@@ -16,7 +16,9 @@ import {
   Layers,
   Trophy,
   Pencil,
-  Activity
+  Activity,
+  Search,
+  Users
 } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { RouteOverlays, sampleOverlays } from '@/components/racing/route-overlays';
@@ -25,6 +27,8 @@ import { RouteCreator } from '@/components/racing/route-creator';
 import { SimulationMode } from '@/components/racing/simulation-mode';
 import { RouteHeatmap } from '@/components/racing/route-heatmap';
 import { RouteLeaderboard } from '@/components/racing/route-leaderboard';
+import { AddressSearch } from '@/components/racing/address-search';
+import { NearbyDrivers } from '@/components/racing/nearby-drivers';
 
 interface RacingMapProps {
   center?: [number, number];
@@ -64,6 +68,8 @@ export function RacingMap({
   const [showSimulation, setShowSimulation] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showAddressSearch, setShowAddressSearch] = useState(false);
+  const [showNearbyDrivers, setShowNearbyDrivers] = useState(false);
 
   const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -549,49 +555,110 @@ export function RacingMap({
   };
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Map container */}
-      <div 
-        ref={mapContainer} 
-        className="w-full h-full" 
-        style={{ minHeight: '400px' }}
-      />
+    <div className="absolute inset-0 bg-racing-dark overflow-hidden">
+      {/* Map Container - Full Background */}
+      <div ref={mapContainer} className="absolute inset-0" />
+      
+      {/* Header Bar */}
+      <div className="absolute top-0 left-0 right-0 z-20 bg-black/80 backdrop-blur-sm border-b border-racing-steel/30">
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-white">GHOSTRACER</h1>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-racing-green rounded-full animate-pulse"></div>
+              <span className="text-sm text-racing-green">ONLINE</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-xs text-gray-400">Range</div>
+              <div className="text-sm text-white">2km</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Racing-style UI overlay */}
+      {/* Main Floating Control Hub - Evenly Distributed */}
       {isMapLoaded && (
         <>
-          {/* Map controls - properly spaced vertical stack */}
-          <div className="absolute right-4 top-20 flex flex-col gap-3 z-10 max-h-[75vh] overflow-y-auto pt-2 pb-6">
-            {/* Map style buttons */}
-            <div className="bg-black/80 backdrop-blur-sm rounded-xl p-3 flex flex-col gap-3 min-w-[56px] shadow-lg border border-white/10">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => toggleMapStyle('dark')}
-                className={`h-10 w-10 hover:bg-racing-blue/20 transition-all duration-200 ${mapStyle === 'dark' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
-                title="Dark Mode"
-              >
-                <Layers className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => toggleMapStyle('satellite')}
-                className={`h-10 w-10 hover:bg-racing-blue/20 transition-all duration-200 ${mapStyle === 'satellite' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
-                title="Satellite View"
-              >
-                <Satellite className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => toggleMapStyle('navigation')}
-                className={`h-10 w-10 hover:bg-racing-blue/20 transition-all duration-200 ${mapStyle === 'navigation' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70 hover:text-white'}`}
-                title="Navigation View"
-              >
-                <Navigation className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="absolute top-0 right-0 h-full flex flex-col justify-between items-end p-6 pointer-events-none z-40" style={{ paddingTop: '80px', paddingBottom: '120px' }}>
+            {/* Search & Navigation */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowAddressSearch(!showAddressSearch)}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showAddressSearch ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="Search Address"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+            
+            {/* AI Routes */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowAIRoutes(!showAIRoutes)}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showAIRoutes ? 'bg-racing-orange/30 text-racing-orange' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="AI Race Routes"
+            >
+              <Route className="h-5 w-5" />
+            </Button>
+            
+            {/* Route Creator */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowRouteCreator(!showRouteCreator)}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showRouteCreator ? 'bg-racing-green/30 text-racing-green' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="Create Route"
+            >
+              <Pencil className="h-5 w-5" />
+            </Button>
+            
+            {/* Activity Heatmap */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showHeatmap ? 'bg-racing-red/30 text-racing-red' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="Activity Heatmap"
+            >
+              <Activity className="h-5 w-5" />
+            </Button>
+            
+            {/* Route Leaderboard */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowLeaderboard(!showLeaderboard)}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showLeaderboard ? 'bg-racing-yellow/30 text-racing-yellow' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="Route Leaderboard"
+            >
+              <Trophy className="h-5 w-5" />
+            </Button>
+            
+            {/* Nearby Drivers */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowNearbyDrivers(!showNearbyDrivers)}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${showNearbyDrivers ? 'bg-purple-600/30 text-purple-400' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="Nearby Drivers"
+            >
+              <Users className="h-5 w-5" />
+            </Button>
+            
+            {/* Map Style Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => toggleMapStyle('dark')}
+              className={`h-12 w-12 hover:bg-racing-blue/20 pointer-events-auto ${mapStyle === 'dark' ? 'bg-racing-blue/30 text-racing-blue' : 'text-white/70'} bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg`}
+              title="Map Style"
+            >
+              <Layers className="h-5 w-5" />
+            </Button>
 
             {/* Toggle controls */}
             <div className="bg-black/80 backdrop-blur-sm rounded-xl p-3 flex flex-col gap-3 min-w-[56px] shadow-lg border border-white/10">
@@ -830,6 +897,27 @@ export function RacingMap({
       {showLeaderboard && (
         <RouteLeaderboard 
           onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+      
+      {/* Address Search */}
+      {showAddressSearch && (
+        <AddressSearch 
+          map={map.current}
+          onLocationSelect={(location, name) => {
+            console.log('Selected location:', location, name);
+            setShowAddressSearch(false);
+          }}
+          onClose={() => setShowAddressSearch(false)}
+        />
+      )}
+      
+      {/* Nearby Drivers */}
+      {showNearbyDrivers && (
+        <NearbyDrivers 
+          map={map.current}
+          currentLocation={center}
+          onClose={() => setShowNearbyDrivers(false)}
         />
       )}
     </div>
